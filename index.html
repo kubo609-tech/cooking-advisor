@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大人の自炊塾</title>
+<style>
+:root{
+  --bg:#FAF6EF; --surface:#FFFFFF; --text:#2E2A25; --muted:#8A8377;
+  --primary:#A6512C; --primary-dark:#7C3A1D; --accent:#5C7A5E;
+  --border:#E4DCC9; --danger:#C0392B; --chip-bg:#F1EAD9;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg); color:var(--text); font-size:17px; line-height:1.7;
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,system-ui,sans-serif;
+}
+header.app-header{
+  background:var(--primary); color:#fff; padding:18px 20px; position:sticky; top:0; z-index:10;
+}
+header.app-header .inner{max-width:780px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px;}
+header.app-header h1{font-size:1.3rem; margin:0;}
+header.app-header p{margin:2px 0 0; font-size:0.82rem; opacity:0.9;}
+.header-actions{display:flex; gap:8px; flex-shrink:0;}
+.home-btn{
+  background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.4);
+  border-radius:8px; padding:8px 14px; font-size:0.9rem; cursor:pointer; white-space:nowrap;
+}
+.home-btn:hover{background:rgba(255,255,255,0.28);}
+main{max-width:780px; margin:0 auto; padding:20px 16px 60px;}
+.screen{display:none;}
+.screen.active{display:block;}
+.hero{margin-bottom:20px;}
+.hero h2{font-size:1.4rem; margin:0 0 6px;}
+.hero .lead{color:var(--muted); margin:0; font-size:0.95rem;}
+.field-group{margin-bottom:18px;}
+.field-label{display:block; font-weight:bold; margin-bottom:8px; font-size:0.95rem;}
+.chip-group{display:flex; flex-wrap:wrap; gap:8px;}
+.chip{
+  background:var(--chip-bg); border:1px solid var(--border); color:var(--text);
+  border-radius:20px; padding:10px 16px; font-size:0.92rem; cursor:pointer;
+  min-height:44px; transition:background .15s, color .15s, border-color .15s;
+}
+.chip:hover{border-color:var(--primary);}
+.chip.selected{background:var(--primary); color:#fff; border-color:var(--primary);}
+.checkbox-line{display:flex; align-items:center; gap:8px; font-size:0.95rem; cursor:pointer;}
+.checkbox-line input{width:20px; height:20px;}
+details.filter-details{
+  background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:18px;
+}
+details.filter-details summary{cursor:pointer; font-weight:bold; padding:4px 0;}
+details.filter-details .field-group:first-of-type{margin-top:14px;}
+.btn{
+  display:inline-block; border:none; border-radius:10px; padding:14px 20px; font-size:1rem;
+  cursor:pointer; min-height:48px; font-weight:bold;
+}
+.btn-primary{background:var(--primary); color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-secondary{background:var(--surface); color:var(--primary); border:1.5px solid var(--primary);}
+.btn-block{width:100%;}
+.browse-all-btn{margin-top:12px;}
+.cuisine-section{margin-bottom:22px;}
+.cuisine-section h3{font-size:1.05rem; margin:0 0 4px; padding-bottom:6px; border-bottom:2px solid var(--border);}
+.cuisine-section .cuisine-count{color:var(--muted); font-weight:normal; font-size:0.82rem;}
+.btn-back{background:none; color:var(--primary); border:none; padding:8px 0; font-size:0.95rem; cursor:pointer; margin-bottom:12px; display:inline-flex; align-items:center; gap:4px;}
+.condition-summary{
+  background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 16px; margin-bottom:16px; font-size:0.9rem; color:var(--muted);
+}
+.recipe-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px;}
+.recipe-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; cursor:pointer;
+  transition:transform .15s, box-shadow .15s; display:flex; flex-direction:column;
+}
+.recipe-card:hover{transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.08);}
+.card-illust{background:#F3EEE1; display:flex; align-items:center; justify-content:center; padding:10px;}
+.card-body{padding:10px 12px 14px;}
+.card-body h3{font-size:1rem; margin:0 0 6px;}
+.badge-row{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:6px;}
+.badge{background:var(--chip-bg); color:var(--text); font-size:0.72rem; padding:3px 8px; border-radius:10px;}
+.badge-accent{background:var(--accent); color:#fff;}
+.card-meta{margin:0; font-size:0.78rem; color:var(--muted);}
+.empty-message{
+  background:var(--surface); border:1px dashed var(--border); border-radius:12px; padding:24px 18px; text-align:center; color:var(--muted);
+}
+.empty-message p{margin:0 0 16px;}
+.detail-header{display:flex; flex-direction:column; align-items:center; text-align:center; margin-bottom:18px;}
+.detail-illust{margin-bottom:8px;}
+.detail-header h2{margin:4px 0 8px; font-size:1.35rem;}
+.servings-control{display:flex; align-items:center; gap:8px; margin-top:6px;}
+.servings-control .chip{padding:8px 14px; font-size:0.85rem;}
+.section-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; margin-bottom:16px;
+}
+.section-card h3{margin:0 0 10px; font-size:1.05rem; display:flex; align-items:center; gap:6px;}
+.nutrition-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; text-align:center; margin-bottom:10px;}
+.nutrition-grid .item{background:var(--bg); border-radius:10px; padding:10px 4px;}
+.nutrition-grid .value{font-size:1.15rem; font-weight:bold; color:var(--primary-dark);}
+.nutrition-grid .label{font-size:0.72rem; color:var(--muted);}
+.nutrition-comment{font-size:0.88rem; color:var(--muted); margin:0;}
+.check-list{list-style:none; margin:0; padding:0;}
+.check-list li{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border);}
+.check-list li:last-child{border-bottom:none;}
+.check-list input[type=checkbox]{width:22px; height:22px; flex-shrink:0;}
+.check-list .item-text{flex:1;}
+.check-list li.checked .item-text{text-decoration:line-through; color:var(--muted); opacity:0.7;}
+.tool-list{list-style:none; margin:0; padding:0;}
+.tool-list li{padding:8px 0; border-bottom:1px solid var(--border);}
+.tool-list li:last-child{border-bottom:none;}
+.tool-note{display:block; font-size:0.78rem; color:var(--muted); margin-top:2px;}
+.step-list{list-style:none; margin:0; padding:0;}
+.step-item{display:flex; gap:12px; padding:14px 0; border-bottom:1px solid var(--border);}
+.step-item:last-child{border-bottom:none;}
+.step-item.checked .step-text{text-decoration:line-through; color:var(--muted); opacity:0.7;}
+.step-icon-wrap{flex-shrink:0; width:44px; height:44px; background:var(--bg); border-radius:10px; display:flex; align-items:center; justify-content:center;}
+.step-num{font-size:0.75rem; color:var(--muted); font-weight:bold;}
+.step-check{flex-shrink:0; margin-top:4px;}
+.step-check input{width:22px; height:22px;}
+.step-body{flex:1;}
+.step-meta-row{display:flex; align-items:center; gap:8px; margin-bottom:3px;}
+.step-time{font-size:0.75rem; color:var(--accent); background:#EAF0EA; padding:2px 8px; border-radius:8px;}
+.step-text{margin:0 0 4px; font-size:0.96rem;}
+.step-tip{margin:0; font-size:0.83rem; color:var(--muted); background:var(--bg); border-left:3px solid var(--accent); padding:6px 10px; border-radius:4px;}
+.term{position:relative; color:var(--primary-dark); border-bottom:1px dotted var(--primary-dark); cursor:pointer; font-weight:bold;}
+.term .term-tip{
+  display:none; position:absolute; left:0; bottom:calc(100% + 6px); width:230px; max-width:60vw;
+  background:#2E2A25; color:#fff; font-weight:normal; font-size:0.78rem; line-height:1.5;
+  padding:8px 10px; border-radius:8px; z-index:20; box-shadow:0 4px 12px rgba(0,0,0,0.2);
+}
+.term.open .term-tip, .term:hover .term-tip, .term:focus .term-tip{display:block;}
+footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padding:20px; }
+@media (max-width:600px){
+  .recipe-grid{grid-template-columns:1fr 1fr;}
+  .nutrition-grid{grid-template-columns:repeat(3,1fr);}
+  header.app-header h1{font-size:1.1rem;}
+  header.app-header .inner{flex-wrap:wrap;}
+  .header-actions .home-btn{padding:7px 10px; font-size:0.78rem;}
+  .section-card{padding:14px;}
+}
+@media (max-width:420px){
+  .recipe-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="inner">
+    <div>
+      <h1>大人の自炊塾</h1>
+      <p>はじめての一人暮らしでも、本格料理が身につく</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="home-btn" id="allmenu-btn" onclick="openAllMenu()">メニュー一覧</button>
+      <button type="button" class="home-btn" id="home-btn" onclick="showScreen('screen-top')" hidden>トップへ</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section id="screen-top" class="screen active">
+    <div class="hero">
+      <h2>今日は何を作りますか?</h2>
+      <p class="lead">条件を選ぶだけで、栄養バランスの取れた本格レシピをご提案します。</p>
+    </div>
+    <form id="condition-form">
+      <div class="field-group">
+        <label class="field-label">国・料理ジャンル</label>
+        <div class="chip-group" id="cuisine-chips"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">食事区分</label>
+        <div class="chip-group" id="meal-chips"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">作る量</label>
+        <div class="chip-group" id="servings-chips"></div>
+      </div>
+      <details class="filter-details">
+        <summary>好み・条件で絞り込む(任意)</summary>
+        <div class="field-group">
+          <label class="field-label">辛さ</label>
+          <div class="chip-group" id="spice-chips"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">調理時間</label>
+          <div class="chip-group" id="time-chips"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">苦手な食材を除く</label>
+          <div class="chip-group" id="exclude-chips"></div>
+        </div>
+        <div class="field-group">
+          <label class="checkbox-line"><input type="checkbox" id="lowcal-check">カロリー控えめのメニューを優先する</label>
+        </div>
+      </details>
+      <button type="submit" class="btn btn-primary btn-block">この条件でメニューを探す</button>
+    </form>
+    <button type="button" class="btn btn-secondary btn-block browse-all-btn" onclick="openAllMenu()">登録されているメニューを一覧で見る</button>
+  </section>
+
+  <section id="screen-list" class="screen">
+    <button type="button" class="btn-back" onclick="showScreen('screen-top')">← 条件を変更する</button>
+    <div class="condition-summary" id="list-condition-summary"></div>
+    <div id="list-results"></div>
+  </section>
+
+  <section id="screen-all" class="screen">
+    <button type="button" class="btn-back" onclick="showScreen('screen-top')">← トップに戻る</button>
+    <div class="hero">
+      <h2>登録メニュー一覧</h2>
+      <p class="lead" id="all-menu-count"></p>
+    </div>
+    <div id="all-menu-results"></div>
+  </section>
+
+  <section id="screen-detail" class="screen">
+    <button type="button" class="btn-back" id="detail-back-btn" onclick="backFromDetail()">← 一覧に戻る</button>
+    <div id="detail-content"></div>
+  </section>
+
+</main>
+
+<footer class="app-footer">大人の自炊塾 &mdash; オフラインで使える自炊学習アプリ</footer>
+
+<script>
+/* =========================================================
+   共通データ定義
+   ========================================================= */
+const CUISINES = [
+  {key:'japan', label:'日本'}, {key:'china', label:'中国'}, {key:'india', label:'インド'},
+  {key:'thailand', label:'タイ'}, {key:'france', label:'フランス'}, {key:'italy', label:'イタリア'}
+];
+const MEALS = [
+  {key:'breakfast', label:'朝食'}, {key:'lunch', label:'昼食'}, {key:'dinner', label:'夕食'}
+];
+const SERVINGS_OPTIONS = [1,2,3,4];
+const SPICE_LEVELS = [
+  {key:'any', label:'指定なし'}, {key:'mild', label:'控えめ'}, {key:'medium', label:'普通'}, {key:'hot', label:'しっかり'}
+];
+const TIME_LEVELS = [
+  {key:'any', label:'指定なし'}, {key:'quick', label:'時短(〜25分)'}, {key:'standard', label:'標準(26〜40分)'}, {key:'slow', label:'じっくり(40分〜)'}
+];
+const EXCLUDABLE_TAGS = ['パクチー','魚介','きのこ','乳製品'];
+
+const CUISINE_LABEL = {}; CUISINES.forEach(c => CUISINE_LABEL[c.key] = c.label);
+const SPICE_LABEL = {}; SPICE_LEVELS.forEach(s => SPICE_LABEL[s.key] = s.label);
+
+const GLOSSARY_COMMON = {
+  'アク取り': 'アク(灰汁)とは、煮込んだときに浮いてくる灰色っぽい泡や不純物のこと。玉じゃくしなどですくい取ると、雑味のないすっきりした味に仕上がります。',
+  '隠し包丁': '火の通りを良くしたり味を染み込みやすくするために、食材の見えない部分に浅く切り込みを入れること。',
+  '乳化': '本来混ざりにくい油と水分(だしやワインなど)を混ぜ合わせて、白っぽくとろみのある一体感のある状態にすること。ソースにコクとつやが出ます。',
+  '一口大': '箸やフォークで一度に口に運びやすい大きさ(目安2〜3cm角)に切りそろえること。',
+  'ひと煮立ち': '鍋の中身が沸騰した状態に一度なること。長く煮込みすぎないための目安の合図です。',
+  '下味': '調理の前に、塩・こしょうや醤油などで食材にあらかじめ軽く味をつけておくこと。臭み消しや味の入りを良くする効果があります。',
+  '余熱': '火を止めた後も鍋やフライパン自体に残っている熱のこと。仕上げの数分はこの余熱だけで火を通すと焦げ付きを防げます。',
+  '中火': '鍋底に炎の先端が軽く触れる程度の火加減。多くの調理の基本となる火力です。',
+  'ホール香辛料': '粉末にする前の、粒や種の形のままのスパイス。油で軽く炒めることで香りが引き立ちます。'
+};
+
+/* =========================================================
+   完成イメージ・手順アイコン用インラインSVG
+   ========================================================= */
+function svgWrap(inner, size){
+  return '<svg viewBox="0 0 200 200" width="'+size+'" height="'+size+'" xmlns="http://www.w3.org/2000/svg">'+inner+'</svg>';
+}
+function dishSVG(type, colors, size){
+  size = size || 140; colors = colors || [];
+  var g = function(i, fb){ return colors[i] || fb; };
+  var inner = '';
+  if(type === 'plate-main'){
+    var main = g(0,'#C99A6B'), sub = g(1,'#8FBF6B'), garnish = g(2,'#F2C14E');
+    inner = '<ellipse cx="100" cy="140" rx="82" ry="30" fill="#ECE6D6"/>' +
+      '<ellipse cx="100" cy="136" rx="70" ry="24" fill="#FFFFFF"/>' +
+      '<ellipse cx="85" cy="120" rx="40" ry="20" fill="'+main+'"/>' +
+      '<ellipse cx="130" cy="128" rx="24" ry="14" fill="'+sub+'"/>' +
+      '<circle cx="150" cy="112" r="8" fill="'+garnish+'"/>' +
+      '<circle cx="60" cy="110" r="6" fill="'+garnish+'"/>';
+  } else if(type === 'rice-plate'){
+    var sauce = g(0,'#D9773D'), garn = g(1,'#6FAF5A');
+    inner = '<ellipse cx="100" cy="140" rx="82" ry="30" fill="#ECE6D6"/>' +
+      '<ellipse cx="100" cy="136" rx="70" ry="24" fill="#FFFFFF"/>' +
+      '<ellipse cx="68" cy="122" rx="30" ry="18" fill="#F7F3E8" stroke="#E4DCC9" stroke-width="1"/>' +
+      '<path d="M110 108 Q150 100 158 128 Q150 150 108 138 Q98 122 110 108 Z" fill="'+sauce+'"/>' +
+      '<circle cx="120" cy="118" r="5" fill="'+garn+'"/>' +
+      '<circle cx="135" cy="130" r="4" fill="'+garn+'"/>';
+  } else if(type === 'soup-bowl'){
+    var broth = g(0,'#D9633D'), ing1 = g(1,'#E88C8C'), ing2 = g(2,'#6FAF5A');
+    inner = '<ellipse cx="100" cy="130" rx="80" ry="34" fill="#E4DCC9"/>' +
+      '<ellipse cx="100" cy="118" rx="72" ry="16" fill="'+broth+'"/>' +
+      '<path d="M28 118 Q100 134 172 118 L166 128 Q100 144 34 128 Z" fill="'+broth+'"/>' +
+      '<circle cx="80" cy="114" r="7" fill="'+ing1+'"/>' +
+      '<circle cx="118" cy="110" r="6" fill="'+ing2+'"/>' +
+      '<circle cx="130" cy="120" r="5" fill="'+ing1+'"/>';
+  } else if(type === 'pasta-plate'){
+    var fleck = g(0,'#C0392B'), herb = g(1,'#6FAF5A');
+    inner = '<ellipse cx="100" cy="140" rx="82" ry="30" fill="#ECE6D6"/>' +
+      '<ellipse cx="100" cy="136" rx="70" ry="24" fill="#FFFFFF"/>' +
+      '<path d="M50 122 Q80 100 100 122 Q120 144 150 122 Q130 110 110 122 Q90 134 70 118 Q60 116 50 122 Z" fill="#F0D98C"/>' +
+      '<circle cx="90" cy="120" r="3" fill="'+fleck+'"/>' +
+      '<circle cx="112" cy="128" r="3" fill="'+fleck+'"/>' +
+      '<circle cx="70" cy="115" r="4" fill="'+herb+'"/>';
+  } else if(type === 'omelette-plate'){
+    var egg = g(0,'#F2C14E'), gar2 = g(1,'#D9573B');
+    inner = '<ellipse cx="100" cy="140" rx="82" ry="30" fill="#ECE6D6"/>' +
+      '<ellipse cx="100" cy="136" rx="70" ry="24" fill="#FFFFFF"/>' +
+      '<ellipse cx="100" cy="122" rx="46" ry="24" fill="'+egg+'"/>' +
+      '<ellipse cx="100" cy="118" rx="30" ry="10" fill="#FBE39B" opacity="0.7"/>' +
+      '<circle cx="140" cy="120" r="5" fill="'+gar2+'"/>';
+  } else if(type === 'pot-stew'){
+    var brothC = g(0,'#C68B4B'), i1 = g(1,'#E3A15B'), i2 = g(2,'#8FBF6B'), i3 = g(3,'#B5713F');
+    inner = '<rect x="40" y="100" width="120" height="60" rx="10" fill="#5B5B5B"/>' +
+      '<rect x="30" y="94" width="140" height="16" rx="8" fill="#3F3F3F"/>' +
+      '<rect x="16" y="112" width="16" height="10" rx="4" fill="#3F3F3F"/>' +
+      '<rect x="168" y="112" width="16" height="10" rx="4" fill="#3F3F3F"/>' +
+      '<ellipse cx="100" cy="108" rx="60" ry="10" fill="'+brothC+'"/>' +
+      '<circle cx="82" cy="106" r="8" fill="'+i1+'"/>' +
+      '<circle cx="112" cy="104" r="7" fill="'+i2+'"/>' +
+      '<circle cx="130" cy="108" r="6" fill="'+i3+'"/>';
+  } else {
+    inner = '<circle cx="100" cy="100" r="60" fill="#E4DCC9"/>';
+  }
+  return svgWrap(inner, size);
+}
+const STEP_ICONS = {
+  cut: '<svg viewBox="0 0 40 40" width="26" height="26"><rect x="4" y="26" width="26" height="6" rx="2" fill="#D9C9A3"/><path d="M6 26 L30 10 L34 14 L12 28 Z" fill="#9AA0A6"/></svg>',
+  stir: '<svg viewBox="0 0 40 40" width="26" height="26"><ellipse cx="20" cy="26" rx="16" ry="7" fill="#9AA0A6"/><rect x="26" y="4" width="4" height="20" rx="2" fill="#8A8377" transform="rotate(20 26 4)"/></svg>',
+  fry: '<svg viewBox="0 0 40 40" width="26" height="26"><ellipse cx="18" cy="26" rx="15" ry="6" fill="#9AA0A6"/><rect x="30" y="20" width="10" height="4" rx="2" fill="#8A8377"/><circle cx="14" cy="18" r="2" fill="#F2C14E"/><circle cx="20" cy="14" r="2" fill="#F2C14E"/></svg>',
+  boil: '<svg viewBox="0 0 40 40" width="26" height="26"><rect x="6" y="18" width="28" height="16" rx="3" fill="#9AA0A6"/><path d="M14 14 q2 -6 0 -10" stroke="#B7C4CF" stroke-width="2" fill="none"/><path d="M22 14 q2 -6 0 -10" stroke="#B7C4CF" stroke-width="2" fill="none"/><path d="M30 14 q2 -6 0 -10" stroke="#B7C4CF" stroke-width="2" fill="none"/></svg>',
+  simmer: '<svg viewBox="0 0 40 40" width="26" height="26"><rect x="6" y="20" width="28" height="14" rx="3" fill="#9AA0A6"/><ellipse cx="20" cy="18" rx="15" ry="3" fill="#8A8377"/><circle cx="20" cy="10" r="2" fill="#B7C4CF"/></svg>',
+  mix: '<svg viewBox="0 0 40 40" width="26" height="26"><path d="M8 14 Q20 6 32 14 L28 30 Q20 34 12 30 Z" fill="#ECE6D6" stroke="#D9C9A3" stroke-width="1.5"/><line x1="20" y1="10" x2="24" y2="30" stroke="#8A8377" stroke-width="2"/></svg>',
+  marinate: '<svg viewBox="0 0 40 40" width="26" height="26"><path d="M8 16 Q20 8 32 16 L28 30 Q20 34 12 30 Z" fill="#ECE6D6" stroke="#D9C9A3" stroke-width="1.5"/><circle cx="26" cy="10" r="6" fill="none" stroke="#8A8377" stroke-width="2"/><line x1="26" y1="10" x2="26" y2="6" stroke="#8A8377" stroke-width="1.5"/><line x1="26" y1="10" x2="29" y2="11" stroke="#8A8377" stroke-width="1.5"/></svg>',
+  season: '<svg viewBox="0 0 40 40" width="26" height="26"><rect x="14" y="12" width="12" height="20" rx="4" fill="#9AA0A6"/><rect x="16" y="8" width="8" height="6" rx="2" fill="#8A8377"/><circle cx="18" cy="18" r="1" fill="#fff"/><circle cx="22" cy="20" r="1" fill="#fff"/><circle cx="19" cy="24" r="1" fill="#fff"/></svg>',
+  rest: '<svg viewBox="0 0 40 40" width="26" height="26"><circle cx="20" cy="20" r="14" fill="none" stroke="#8A8377" stroke-width="2"/><line x1="20" y1="20" x2="20" y2="10" stroke="#8A8377" stroke-width="2"/><line x1="20" y1="20" x2="27" y2="22" stroke="#8A8377" stroke-width="2"/></svg>',
+  plate: '<svg viewBox="0 0 40 40" width="26" height="26"><ellipse cx="20" cy="22" rx="16" ry="8" fill="#ECE6D6"/><ellipse cx="20" cy="20" rx="12" ry="6" fill="#fff"/></svg>'
+};
+
+/* =========================================================
+   レシピデータ (全18品・基準人数2人分)
+   ========================================================= */
+const RECIPES = [
+{
+  id:'jp-01', name:'鶏肉と大根の煮物', cuisine:'japan', mealTypes:['dinner'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'standard', excludeIngredients:[], lowCalorie:false},
+  cookTimeMinutes:40,
+  nutrition:{kcal:320, protein:22, fat:10, carb:24, salt:2.2},
+  nutritionComment:'鶏肉と根菜でたんぱく質と食物繊維がしっかり摂れる、和食の定番おかずです。',
+  ingredients:[
+    {name:'鶏もも肉', amount:200, unit:'g'},
+    {name:'大根', amount:300, unit:'g'},
+    {name:'にんじん', amount:80, unit:'g'}
+  ],
+  seasonings:[
+    {name:'だし汁', amount:300, unit:'ml'},
+    {name:'醤油', amount:30, unit:'ml'},
+    {name:'みりん', amount:30, unit:'ml'},
+    {name:'酒', amount:20, unit:'ml'},
+    {name:'砂糖', amount:10, unit:'g'},
+    {name:'サラダ油', amount:null, unit:'大さじ1/2'}
+  ],
+  tools:['両手鍋','包丁','まな板','おたま'],
+  toolNotes:{},
+  glossary:['一口大','アク取り','ひと煮立ち','隠し包丁'],
+  steps:[
+    {text:'大根とにんじんは皮をむき乱切りにする。鶏肉は{{一口大}}に切る。', timeMinutes:7, tip:'大根の角を薄く削る面取り(隠し包丁の一種)をすると煮崩れしにくくなります。', icon:'cut'},
+    {text:'鍋に油を熱し、鶏肉の表面が白くなるまで中火で炒める。', timeMinutes:3, tip:'', icon:'fry'},
+    {text:'大根、にんじんを加えてさっと炒め合わせる。', timeMinutes:2, tip:'', icon:'stir'},
+    {text:'だし汁を注ぎ、沸騰したら{{アク取り}}をする。', timeMinutes:5, tip:'', icon:'boil'},
+    {text:'調味料を加え、落し蓋(なければアルミホイル)をして弱火で20分煮る。', timeMinutes:20, tip:'落し蓋がなければクッキングシートやアルミホイルで代用できます。', icon:'simmer'},
+    {text:'大根に竹串がすっと通ったら{{ひと煮立ち}}させて火を止め、器に盛る。', timeMinutes:3, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'pot-stew', colors:['#C68B4B','#E3A15B','#F0954A','#F7F3E8']}
+},
+{
+  id:'jp-02', name:'鮭の塩焼きと具だくさん味噌汁', cuisine:'japan', mealTypes:['breakfast','lunch'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'standard', excludeIngredients:['魚介'], lowCalorie:true},
+  cookTimeMinutes:30,
+  nutrition:{kcal:420, protein:27, fat:11, carb:52, salt:2.6},
+  nutritionComment:'魚のたんぱく質と具だくさんの味噌汁で、朝から栄養バランスよくスタートできます。',
+  ingredients:[
+    {name:'生鮭切り身', amount:2, unit:'切れ'},
+    {name:'大根', amount:100, unit:'g'},
+    {name:'にんじん', amount:40, unit:'g'},
+    {name:'油揚げ', amount:0.5, unit:'枚'},
+    {name:'ご飯(炊いたもの)', amount:300, unit:'g'}
+  ],
+  seasonings:[
+    {name:'塩(鮭用)', amount:null, unit:'小さじ1/2'},
+    {name:'だし汁', amount:400, unit:'ml'},
+    {name:'味噌', amount:null, unit:'大さじ2'}
+  ],
+  tools:['グリルまたはフライパン','小鍋','包丁','まな板'],
+  toolNotes:{'グリルまたはフライパン':'グリルがない場合はフッ素樹脂加工のフライパンに蓋をして代用可'},
+  glossary:['下味','余熱'],
+  steps:[
+    {text:'鮭に塩をふり10分ほど置いて{{下味}}をつけ、出てきた水気をキッチンペーパーで拭き取る。', timeMinutes:10, tip:'', icon:'marinate'},
+    {text:'大根とにんじんは薄いいちょう切り、油揚げは細切りにする。', timeMinutes:5, tip:'', icon:'cut'},
+    {text:'グリルまたはフライパンで鮭の両面をこんがり焼く。フライパンの場合は蓋をして中火弱で火を通す。', timeMinutes:8, tip:'火を止めたあとも{{余熱}}で1〜2分火が入るので、焼きすぎに注意しましょう。', icon:'fry'},
+    {text:'小鍋にだし汁と大根・にんじんを入れて柔らかくなるまで煮る。', timeMinutes:6, tip:'', icon:'simmer'},
+    {text:'油揚げを加えてひと煮し、火を止めてから味噌を溶き入れる。', timeMinutes:3, tip:'味噌は煮立たせると香りが飛ぶので、必ず火を止めてから溶かします。', icon:'boil'},
+    {text:'ご飯・焼き鮭・味噌汁を盛り付けて完成。', timeMinutes:2, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'plate-main', colors:['#E8836F','#F7F3E8','#B98A5A']}
+},
+{
+  id:'jp-03', name:'豚の生姜焼き定食', cuisine:'japan', mealTypes:['lunch','dinner'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'quick', excludeIngredients:[], lowCalorie:false},
+  cookTimeMinutes:25,
+  nutrition:{kcal:520, protein:24, fat:22, carb:58, salt:2.3},
+  nutritionComment:'豚肉のビタミンB1で疲労回復に役立つ、スタミナのつく定番おかずです。',
+  ingredients:[
+    {name:'豚ロース薄切り肉(しょうが焼き用)', amount:240, unit:'g'},
+    {name:'玉ねぎ', amount:0.5, unit:'個'},
+    {name:'キャベツ(せん切り用)', amount:150, unit:'g'},
+    {name:'ご飯(炊いたもの)', amount:300, unit:'g'}
+  ],
+  seasonings:[
+    {name:'しょうが(すりおろし)', amount:null, unit:'大さじ1'},
+    {name:'醤油', amount:30, unit:'ml'},
+    {name:'みりん', amount:30, unit:'ml'},
+    {name:'酒', amount:15, unit:'ml'},
+    {name:'砂糖', amount:5, unit:'g'},
+    {name:'サラダ油', amount:null, unit:'大さじ1/2'}
+  ],
+  tools:['フライパン','包丁','まな板','ボウル'],
+  toolNotes:{},
+  glossary:['下味','中火'],
+  steps:[
+    {text:'玉ねぎは薄切り、キャベツはせん切りにして水にさらし、水気をよく切る。', timeMinutes:8, tip:'', icon:'cut'},
+    {text:'ボウルにしょうが・醤油・みりん・酒・砂糖を混ぜ合わせ、豚肉を10分ほど漬けて{{下味}}をつける。', timeMinutes:10, tip:'', icon:'marinate'},
+    {text:'フライパンに油を熱し、玉ねぎを{{中火}}でしんなりするまで炒める。', timeMinutes:3, tip:'', icon:'stir'},
+    {text:'豚肉を漬けだれごと加え、色が変わるまで炒める。', timeMinutes:4, tip:'肉を焼きすぎると硬くなるので、色が変わったらすぐ取り出す気持ちで炒めましょう。', icon:'fry'},
+    {text:'残ったたれを煮詰めてとろみをつけ、肉に絡める。', timeMinutes:2, tip:'', icon:'simmer'},
+    {text:'皿にキャベツ・ご飯とともに盛り付ける。', timeMinutes:2, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'plate-main', colors:['#B5713F','#8FBF6B','#F7F3E8']}
+},
+{
+  id:'cn-01', name:'麻婆豆腐', cuisine:'china', mealTypes:['dinner'], baseServings:2,
+  tags:{spiceLevel:'hot', timeLevel:'quick', excludeIngredients:[], lowCalorie:false},
+  cookTimeMinutes:20,
+  nutrition:{kcal:340, protein:18, fat:22, carb:12, salt:2.6},
+  nutritionComment:'豆腐と豚肉で植物性・動物性たんぱく質を両方摂れる一皿です。辛さは豆板醤の量で調整できます。',
+  ingredients:[
+    {name:'木綿豆腐', amount:300, unit:'g'},
+    {name:'豚ひき肉', amount:120, unit:'g'},
+    {name:'長ねぎ', amount:0.5, unit:'本'},
+    {name:'にんにく(みじん切り)', amount:null, unit:'小さじ1'},
+    {name:'しょうが(みじん切り)', amount:null, unit:'小さじ1'}
+  ],
+  seasonings:[
+    {name:'豆板醤', amount:null, unit:'小さじ1〜2(お好みで)'},
+    {name:'甜麺醤', amount:null, unit:'大さじ1'},
+    {name:'醤油', amount:15, unit:'ml'},
+    {name:'鶏がらスープ', amount:150, unit:'ml'},
+    {name:'片栗粉', amount:null, unit:'大さじ1(同量の水で溶く)'},
+    {name:'ごま油', amount:null, unit:'少々'},
+    {name:'サラダ油', amount:null, unit:'大さじ1'}
+  ],
+  tools:['フライパンまたは中華鍋','包丁','まな板','計量カップ'],
+  toolNotes:{},
+  glossary:['中火','ひと煮立ち'],
+  steps:[
+    {text:'豆腐は2cm角に切り、熱湯でさっと下茹でして水気を切っておく。', timeMinutes:5, tip:'', icon:'boil'},
+    {text:'フライパンに油を熱し、にんにく・しょうがを香りが立つまで弱火で炒める。', timeMinutes:2, tip:'', icon:'stir'},
+    {text:'豚ひき肉を加え、パラパラになるまで{{中火}}で炒める。', timeMinutes:3, tip:'', icon:'fry'},
+    {text:'豆板醤・甜麺醤を加えて炒め合わせ、鶏がらスープと醤油を加える。', timeMinutes:2, tip:'', icon:'stir'},
+    {text:'{{ひと煮立ち}}させたら豆腐を加え、崩さないように2〜3分煮る。', timeMinutes:4, tip:'', icon:'simmer'},
+    {text:'水溶き片栗粉を回し入れてとろみをつけ、長ねぎとごま油を加えて仕上げる。', timeMinutes:3, tip:'とろみをつけたら煮込みすぎず手早く仕上げると豆腐が崩れにくくなります。', icon:'stir'}
+  ],
+  finishedIllustration:{type:'rice-plate', colors:['#C43D2E','#6FAF5A']}
+},
+{
+  id:'cn-02', name:'青椒肉絲', cuisine:'china', mealTypes:['lunch','dinner'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'quick', excludeIngredients:[], lowCalorie:true},
+  cookTimeMinutes:20,
+  nutrition:{kcal:300, protein:20, fat:16, carb:14, salt:2.0},
+  nutritionComment:'牛肉とピーマンで鉄分とビタミンCを一緒に摂れる、彩りの良い炒め物です。',
+  ingredients:[
+    {name:'牛薄切り肉(細切り用)', amount:180, unit:'g'},
+    {name:'ピーマン', amount:4, unit:'個'},
+    {name:'たけのこ水煮(細切り)', amount:80, unit:'g'}
+  ],
+  seasonings:[
+    {name:'醤油(下味用)', amount:null, unit:'小さじ2'},
+    {name:'酒(下味用)', amount:null, unit:'小さじ2'},
+    {name:'片栗粉(下味用)', amount:null, unit:'小さじ1'},
+    {name:'オイスターソース', amount:null, unit:'大さじ1'},
+    {name:'醤油', amount:null, unit:'大さじ1/2'},
+    {name:'砂糖', amount:null, unit:'小さじ1/2'},
+    {name:'ごま油', amount:null, unit:'少々'},
+    {name:'サラダ油', amount:null, unit:'大さじ1'}
+  ],
+  tools:['フライパン','包丁','まな板','ボウル'],
+  toolNotes:{},
+  glossary:['一口大','下味','中火'],
+  steps:[
+    {text:'牛肉、ピーマン、たけのこはすべて{{一口大}}より細めの細切りにそろえる。', timeMinutes:8, tip:'太さをそろえると火の通りが均一になり、見た目もきれいに仕上がります。', icon:'cut'},
+    {text:'牛肉に醤油・酒・片栗粉をもみ込み{{下味}}をつける。', timeMinutes:5, tip:'', icon:'marinate'},
+    {text:'フライパンに油を熱し、牛肉を{{中火}}でさっと炒めて取り出す。', timeMinutes:3, tip:'', icon:'fry'},
+    {text:'同じフライパンでピーマンとたけのこを炒める。', timeMinutes:3, tip:'', icon:'stir'},
+    {text:'牛肉を戻し入れ、オイスターソース・醤油・砂糖を加えて手早く炒め合わせる。', timeMinutes:2, tip:'', icon:'stir'},
+    {text:'ごま油を回しかけて香りをつけ、皿に盛る。', timeMinutes:1, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'plate-main', colors:['#8B5A3C','#6FAF5A','#E8DFC0']}
+},
+{
+  id:'cn-03', name:'中華風たまごとトマトの炒め物', cuisine:'china', mealTypes:['breakfast','lunch'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'quick', excludeIngredients:[], lowCalorie:true},
+  cookTimeMinutes:15,
+  nutrition:{kcal:220, protein:12, fat:14, carb:10, salt:1.6},
+  nutritionComment:'卵とトマトだけで手早く作れる、良質なたんぱく質とビタミンが摂れる家庭料理です。',
+  ingredients:[
+    {name:'卵', amount:4, unit:'個'},
+    {name:'トマト', amount:2, unit:'個'},
+    {name:'長ねぎ(小口切り)', amount:null, unit:'少々'}
+  ],
+  seasonings:[
+    {name:'塩', amount:null, unit:'小さじ1/3'},
+    {name:'砂糖', amount:null, unit:'小さじ1'},
+    {name:'鶏がらスープの素', amount:null, unit:'小さじ1/2'},
+    {name:'ごま油', amount:null, unit:'少々'},
+    {name:'サラダ油', amount:null, unit:'大さじ1.5'}
+  ],
+  tools:['フライパン','ボウル','包丁','まな板'],
+  toolNotes:{},
+  glossary:['余熱'],
+  steps:[
+    {text:'トマトはくし切り、卵はボウルに割りほぐし塩少々(分量外)を加えておく。', timeMinutes:5, tip:'', icon:'cut'},
+    {text:'フライパンに油を半量熱し、溶き卵を流し入れて大きくかき混ぜ、半熟状で一度取り出す。', timeMinutes:3, tip:'半熟で取り出すことで{{余熱}}を活かし、ふわふわに仕上がります。', icon:'fry'},
+    {text:'同じフライパンに残りの油を足し、トマトを中火で炒めて軽く崩す。', timeMinutes:3, tip:'', icon:'stir'},
+    {text:'砂糖・鶏がらスープの素・塩を加えて味を調え、トマトから水分が出るまで炒める。', timeMinutes:2, tip:'', icon:'simmer'},
+    {text:'卵を戻し入れてさっと合わせ、ごま油と長ねぎを加えて仕上げる。', timeMinutes:2, tip:'', icon:'stir'}
+  ],
+  finishedIllustration:{type:'plate-main', colors:['#F2C14E','#D9573B','#8FBF6B']}
+},
+{
+  id:'in-01', name:'バターチキン風カレー', cuisine:'india', mealTypes:['dinner'], baseServings:2,
+  tags:{spiceLevel:'medium', timeLevel:'standard', excludeIngredients:['乳製品'], lowCalorie:false},
+  cookTimeMinutes:40,
+  nutrition:{kcal:560, protein:26, fat:28, carb:52, salt:2.4},
+  nutritionComment:'鶏肉のたんぱく質とスパイスの香りが楽しめる、家庭で作れる本格カレーです。',
+  ingredients:[
+    {name:'鶏もも肉', amount:300, unit:'g'},
+    {name:'玉ねぎ', amount:1, unit:'個'},
+    {name:'トマト缶(カット)', amount:1, unit:'缶'},
+    {name:'にんにく(すりおろし)', amount:null, unit:'小さじ1'},
+    {name:'しょうが(すりおろし)', amount:null, unit:'小さじ1'},
+    {name:'生クリームまたは牛乳', amount:100, unit:'ml'},
+    {name:'ご飯(炊いたもの)', amount:300, unit:'g'}
+  ],
+  seasonings:[
+    {name:'プレーンヨーグルト(下味用)', amount:null, unit:'大さじ3'},
+    {name:'カレー粉またはガラムマサラ', amount:null, unit:'大さじ1'},
+    {name:'クミンパウダー', amount:null, unit:'小さじ1'},
+    {name:'パプリカパウダー', amount:null, unit:'小さじ1'},
+    {name:'バター', amount:20, unit:'g'},
+    {name:'塩', amount:null, unit:'小さじ1'},
+    {name:'サラダ油', amount:null, unit:'大さじ1'}
+  ],
+  tools:['フライパンまたは鍋','包丁','まな板','ボウル'],
+  toolNotes:{},
+  glossary:['一口大','下味','ホール香辛料','乳化'],
+  steps:[
+    {text:'鶏肉は{{一口大}}に切り、ヨーグルト・カレー粉半量・塩少々をもみ込んで20分以上{{下味}}をつける(できれば冷蔵庫で一晩)。', timeMinutes:20, tip:'', icon:'marinate'},
+    {text:'玉ねぎはみじん切り、にんにく・しょうがはすりおろす。', timeMinutes:6, tip:'', icon:'cut'},
+    {text:'鍋に油とバター半量を熱し、玉ねぎを飴色になるまでじっくり炒める。', timeMinutes:10, tip:'じっくり炒めることでカレーの甘みとコクが増します。', icon:'stir'},
+    {text:'にんにく・しょうがと残りのスパイスを加え、香りが立つまで炒める。', timeMinutes:2, tip:'', icon:'stir'},
+    {text:'トマト缶と鶏肉を漬けだれごと加え、ひと煮立ちしたら弱火で15分煮込む。', timeMinutes:15, tip:'', icon:'simmer'},
+    {text:'生クリーム(または牛乳)と残りのバターを加えて{{乳化}}させるように混ぜ、塩で味を調える。', timeMinutes:3, tip:'沸騰させすぎると生クリームが分離するので、弱火で仕上げましょう。', icon:'simmer'},
+    {text:'ご飯とともに盛り付ける。', timeMinutes:2, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'rice-plate', colors:['#D9773D','#F0D9A8']}
+},
+{
+  id:'in-02', name:'ダルカレー(レンズ豆カレー)', cuisine:'india', mealTypes:['lunch','dinner'], baseServings:2,
+  tags:{spiceLevel:'medium', timeLevel:'standard', excludeIngredients:[], lowCalorie:true},
+  cookTimeMinutes:35,
+  nutrition:{kcal:360, protein:16, fat:8, carb:58, salt:1.8},
+  nutritionComment:'レンズ豆は食物繊維と植物性たんぱく質が豊富で、低脂質ながら満足感のあるカレーです。',
+  ingredients:[
+    {name:'レンズ豆(乾燥・皮なし)', amount:150, unit:'g'},
+    {name:'トマト', amount:1, unit:'個'},
+    {name:'玉ねぎ', amount:0.5, unit:'個'},
+    {name:'にんにく(みじん切り)', amount:null, unit:'小さじ1'},
+    {name:'しょうが(みじん切り)', amount:null, unit:'小さじ1'},
+    {name:'ご飯(炊いたもの)', amount:300, unit:'g'}
+  ],
+  seasonings:[
+    {name:'クミンシード', amount:null, unit:'小さじ1'},
+    {name:'ターメリック', amount:null, unit:'小さじ1/2'},
+    {name:'チリパウダー(お好みで)', amount:null, unit:'小さじ1/2'},
+    {name:'塩', amount:null, unit:'小さじ1'},
+    {name:'サラダ油', amount:null, unit:'大さじ1'},
+    {name:'水', amount:500, unit:'ml'}
+  ],
+  tools:['鍋','包丁','まな板','ざる'],
+  toolNotes:{},
+  glossary:['アク取り','ホール香辛料'],
+  steps:[
+    {text:'レンズ豆はさっと洗ってざるにあげる(浸水の要否はパッケージの表示に従う)。', timeMinutes:3, tip:'', icon:'rest'},
+    {text:'玉ねぎ・トマト・にんにく・しょうがはみじん切りにする。', timeMinutes:6, tip:'', icon:'cut'},
+    {text:'鍋に油を熱し、{{ホール香辛料}}のクミンシードを弱火で炒め、香りが立ったら玉ねぎ・にんにく・しょうがを加えて炒める。', timeMinutes:4, tip:'', icon:'stir'},
+    {text:'トマトとターメリック・チリパウダーを加えて炒め合わせる。', timeMinutes:3, tip:'', icon:'stir'},
+    {text:'レンズ豆と水を加え、{{アク取り}}をしながら弱火で20分ほど、豆が柔らかくなるまで煮る。', timeMinutes:20, tip:'', icon:'simmer'},
+    {text:'塩で味を調え、好みのとろみになるよう水加減し、ご飯とともに盛る。', timeMinutes:3, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'rice-plate', colors:['#C99A3A','#D9573B']}
+},
+{
+  id:'in-03', name:'マサラオムレツ', cuisine:'india', mealTypes:['breakfast'], baseServings:2,
+  tags:{spiceLevel:'medium', timeLevel:'quick', excludeIngredients:[], lowCalorie:false},
+  cookTimeMinutes:15,
+  nutrition:{kcal:260, protein:14, fat:20, carb:4, salt:1.2},
+  nutritionComment:'卵と野菜だけで手早く作れる、スパイスが食欲をそそる朝食向けの一品です。',
+  ingredients:[
+    {name:'卵', amount:4, unit:'個'},
+    {name:'玉ねぎ(みじん切り)', amount:0.25, unit:'個'},
+    {name:'トマト(みじん切り)', amount:0.25, unit:'個'},
+    {name:'青唐辛子または青ピーマン(みじん切り・お好みで)', amount:null, unit:'少々'},
+    {name:'コリアンダー(あれば)', amount:null, unit:'少々'}
+  ],
+  seasonings:[
+    {name:'ターメリック', amount:null, unit:'小さじ1/4'},
+    {name:'クミンパウダー', amount:null, unit:'小さじ1/4'},
+    {name:'塩', amount:null, unit:'小さじ1/3'},
+    {name:'サラダ油', amount:null, unit:'大さじ1'}
+  ],
+  tools:['ボウル','フライパン','包丁','まな板'],
+  toolNotes:{},
+  glossary:['中火'],
+  steps:[
+    {text:'玉ねぎ・トマトなどの野菜をすべてみじん切りにする。', timeMinutes:5, tip:'', icon:'cut'},
+    {text:'ボウルに卵を割りほぐし、野菜とスパイス、塩を加えてよく混ぜる。', timeMinutes:3, tip:'', icon:'mix'},
+    {text:'フライパンに油を熱し、卵液を流し入れて{{中火}}で広げる。', timeMinutes:2, tip:'', icon:'fry'},
+    {text:'表面が半熟になったら半分に折りたたむか、両面焼いて中まで火を通す。', timeMinutes:3, tip:'', icon:'fry'},
+    {text:'皿に盛り、お好みでコリアンダーを散らす。', timeMinutes:1, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'omelette-plate', colors:['#F2C14E','#D9573B']}
+},
+{
+  id:'th-01', name:'ガパオライス', cuisine:'thailand', mealTypes:['lunch','dinner'], baseServings:2,
+  tags:{spiceLevel:'medium', timeLevel:'quick', excludeIngredients:[], lowCalorie:false},
+  cookTimeMinutes:20,
+  nutrition:{kcal:620, protein:26, fat:24, carb:72, salt:2.6},
+  nutritionComment:'鶏肉とバジルの香りが食欲をそそる、ボリューム満点のタイの定番ライスです。',
+  ingredients:[
+    {name:'鶏ひき肉', amount:250, unit:'g'},
+    {name:'玉ねぎ', amount:0.5, unit:'個'},
+    {name:'パプリカまたはピーマン', amount:1, unit:'個'},
+    {name:'にんにく(みじん切り)', amount:null, unit:'大さじ1'},
+    {name:'バジルの葉(あれば)', amount:null, unit:'1つかみ'},
+    {name:'卵', amount:2, unit:'個'},
+    {name:'ご飯(炊いたもの)', amount:300, unit:'g'}
+  ],
+  seasonings:[
+    {name:'ナンプラー', amount:null, unit:'大さじ1.5'},
+    {name:'オイスターソース', amount:null, unit:'大さじ1'},
+    {name:'醤油', amount:null, unit:'小さじ1'},
+    {name:'砂糖', amount:null, unit:'小さじ1'},
+    {name:'赤唐辛子(お好みで)', amount:1, unit:'本'},
+    {name:'サラダ油', amount:null, unit:'大さじ1.5'}
+  ],
+  tools:['フライパン(目玉焼き用に予備1枚あると便利)','包丁','まな板'],
+  toolNotes:{},
+  glossary:['一口大','中火'],
+  steps:[
+    {text:'玉ねぎ・パプリカは{{一口大}}に切り、にんにくと唐辛子はみじん切りにする。', timeMinutes:6, tip:'', icon:'cut'},
+    {text:'フライパンに油を熱し、にんにくと唐辛子を香りが立つまで弱火で炒める。', timeMinutes:2, tip:'', icon:'stir'},
+    {text:'鶏ひき肉を加え、{{中火}}でほぐしながら色が変わるまで炒める。', timeMinutes:4, tip:'', icon:'fry'},
+    {text:'玉ねぎとパプリカを加えて炒め合わせ、ナンプラー・オイスターソース・醤油・砂糖で味付けする。', timeMinutes:3, tip:'', icon:'stir'},
+    {text:'火を止める直前にバジルの葉を加えてさっと混ぜる。', timeMinutes:1, tip:'バジルは加熱しすぎると香りが飛ぶので、最後に加えます。', icon:'stir'},
+    {text:'別のフライパンで目玉焼きを焼く。ご飯にガパオをのせ、目玉焼きをトッピングする。', timeMinutes:4, tip:'', icon:'fry'}
+  ],
+  finishedIllustration:{type:'rice-plate', colors:['#7A8C3E','#F2C14E']}
+},
+{
+  id:'th-02', name:'トムヤムクン', cuisine:'thailand', mealTypes:['lunch','dinner'], baseServings:2,
+  tags:{spiceLevel:'hot', timeLevel:'standard', excludeIngredients:['魚介','パクチー'], lowCalorie:false},
+  cookTimeMinutes:30,
+  nutrition:{kcal:180, protein:16, fat:6, carb:12, salt:2.8},
+  nutritionComment:'えびの低脂質・高たんぱくと、酸味・辛味のスパイスで代謝を高めてくれるスープです。',
+  ingredients:[
+    {name:'えび(殻付き)', amount:8, unit:'尾'},
+    {name:'マッシュルームまたはきのこ', amount:100, unit:'g'},
+    {name:'トマト', amount:1, unit:'個'},
+    {name:'レモングラス・こぶみかんの葉(あれば)', amount:null, unit:'適量'},
+    {name:'パクチー(お好みで)', amount:null, unit:'適量'}
+  ],
+  seasonings:[
+    {name:'ナンプラー', amount:null, unit:'大さじ2'},
+    {name:'レモン汁またはライム汁', amount:null, unit:'大さじ2'},
+    {name:'ナムプリックパオまたはチリペースト(あれば)', amount:null, unit:'大さじ1'},
+    {name:'鶏がらスープ', amount:600, unit:'ml'},
+    {name:'赤唐辛子', amount:2, unit:'本'}
+  ],
+  tools:['鍋','包丁','まな板'],
+  toolNotes:{},
+  glossary:['一口大','ひと煮立ち','ホール香辛料'],
+  steps:[
+    {text:'えびは殻をむいて背わたを取る(殻はスープに使うのでとっておく)。きのこ・トマトは{{一口大}}に切る。', timeMinutes:8, tip:'', icon:'cut'},
+    {text:'鍋にスープとえびの殻、レモングラスなどの香味野菜を入れて10分ほど煮出す。', timeMinutes:10, tip:'', icon:'boil'},
+    {text:'殻と香味野菜を取り出し、きのことトマトを加えて煮る。', timeMinutes:5, tip:'', icon:'simmer'},
+    {text:'えびを加え、色が変わるまで煮る。', timeMinutes:3, tip:'煮すぎるとえびが硬くなるので、色が変わったらすぐ火を弱めます。', icon:'boil'},
+    {text:'火を止めてからナンプラー・レモン汁・チリペーストを加えて味を調える。', timeMinutes:2, tip:'酸味と香りを飛ばさないよう、酸味の調味料は仕上げに加えます。', icon:'season'},
+    {text:'器に盛り、お好みでパクチーを散らす。', timeMinutes:2, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'soup-bowl', colors:['#D9633D','#E88C8C','#8FBF6B']}
+},
+{
+  id:'th-03', name:'タイ風卵焼き(カイジアオ)', cuisine:'thailand', mealTypes:['breakfast'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'quick', excludeIngredients:[], lowCalorie:false},
+  cookTimeMinutes:15,
+  nutrition:{kcal:280, protein:14, fat:22, carb:4, salt:1.4},
+  nutritionComment:'卵とひき肉のシンプルな組み合わせで、手早くたんぱく質が摂れる朝食向けの一品です。',
+  ingredients:[
+    {name:'卵', amount:4, unit:'個'},
+    {name:'豚ひき肉または鶏ひき肉(お好みで)', amount:80, unit:'g'},
+    {name:'長ねぎ(小口切り)', amount:null, unit:'少々'}
+  ],
+  seasonings:[
+    {name:'ナンプラー', amount:null, unit:'小さじ2'},
+    {name:'塩・こしょう', amount:null, unit:'少々'},
+    {name:'サラダ油(揚げ焼き用)', amount:null, unit:'大さじ4'}
+  ],
+  tools:['フライパン','ボウル'],
+  toolNotes:{},
+  glossary:['中火'],
+  steps:[
+    {text:'ボウルに卵を割りほぐし、ひき肉・ナンプラー・長ねぎを加えてよく混ぜる。', timeMinutes:4, tip:'', icon:'mix'},
+    {text:'フライパンに多めの油を熱し、しっかり中火〜強火で温める。', timeMinutes:2, tip:'', icon:'fry'},
+    {text:'卵液を一気に流し入れ、縁がふくらんでカリッとするまで揚げ焼きにする。', timeMinutes:3, tip:'油を多めに使うことで外側がカリッと香ばしく仕上がる、タイの家庭料理らしい食感になります。', icon:'fry'},
+    {text:'片面が色づいたら裏返し、もう片面も揚げ焼きにする。', timeMinutes:2, tip:'', icon:'fry'},
+    {text:'油をよく切って皿に盛る。', timeMinutes:1, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'omelette-plate', colors:['#F2C14E','#B5713F']}
+},
+{
+  id:'fr-01', name:'ポトフ', cuisine:'france', mealTypes:['dinner'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'slow', excludeIngredients:[], lowCalorie:true},
+  cookTimeMinutes:55,
+  nutrition:{kcal:320, protein:22, fat:12, carb:26, salt:2.3},
+  nutritionComment:'野菜の旨みがスープに溶け出す、素材の味を活かしたフランスの家庭料理です。',
+  ingredients:[
+    {name:'ソーセージ(あらびき)', amount:4, unit:'本'},
+    {name:'キャベツ', amount:0.25, unit:'個'},
+    {name:'にんじん', amount:1, unit:'本'},
+    {name:'じゃがいも', amount:2, unit:'個'},
+    {name:'玉ねぎ', amount:1, unit:'個'},
+    {name:'ローリエ', amount:null, unit:'1枚'}
+  ],
+  seasonings:[
+    {name:'塩', amount:null, unit:'小さじ1'},
+    {name:'こしょう', amount:null, unit:'少々'},
+    {name:'コンソメ(顆粒または固形)', amount:null, unit:'1〜2個'},
+    {name:'水', amount:800, unit:'ml'}
+  ],
+  tools:['深めの鍋','包丁','まな板'],
+  toolNotes:{'深めの鍋':'大きめの鍋であれば代用可'},
+  glossary:['一口大','アク取り'],
+  steps:[
+    {text:'キャベツは大きめのくし切り、にんじん・じゃがいも・玉ねぎは大きめの{{一口大}}に切る。', timeMinutes:10, tip:'', icon:'cut'},
+    {text:'鍋に水・コンソメ・ローリエと野菜、ソーセージを入れて強火にかける。', timeMinutes:3, tip:'', icon:'boil'},
+    {text:'沸騰したら{{アク取り}}をし、弱火にして蓋をずらしてのせる。', timeMinutes:5, tip:'', icon:'simmer'},
+    {text:'弱火のまま、野菜が柔らかくなるまで30〜40分煮込む。', timeMinutes:35, tip:'弱火でじっくり煮ることで野菜の甘みがスープに溶け出します。', icon:'simmer'},
+    {text:'塩・こしょうで味を調え、器に盛る。', timeMinutes:3, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'pot-stew', colors:['#E8D9B5','#F0954A','#8FBF6B','#B5713F']}
+},
+{
+  id:'fr-02', name:'フレンチオムレツ', cuisine:'france', mealTypes:['breakfast'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'quick', excludeIngredients:['乳製品'], lowCalorie:false},
+  cookTimeMinutes:10,
+  nutrition:{kcal:300, protein:14, fat:26, carb:2, salt:1.0},
+  nutritionComment:'卵の良質なたんぱく質を、フライパンひとつで手早く摂れる朝食の定番です。',
+  ingredients:[
+    {name:'卵', amount:3, unit:'個'},
+    {name:'バター', amount:15, unit:'g'}
+  ],
+  seasonings:[
+    {name:'塩', amount:null, unit:'少々'},
+    {name:'こしょう', amount:null, unit:'少々'},
+    {name:'牛乳または生クリーム(お好みで)', amount:null, unit:'大さじ1'}
+  ],
+  tools:['フライパン(できれば小さめの卵焼き用)','ボウル','フォーク'],
+  toolNotes:{},
+  glossary:['中火','余熱'],
+  steps:[
+    {text:'ボウルに卵を割りほぐし、塩・こしょう・牛乳を加えてよく混ぜる。', timeMinutes:3, tip:'', icon:'mix'},
+    {text:'フライパンにバターを{{中火}}で熱し、溶けて泡立ってきたら卵液を一気に流し入れる。', timeMinutes:1, tip:'', icon:'fry'},
+    {text:'フォークで手早く大きく混ぜ、半熟状になったら火を弱める。', timeMinutes:2, tip:'常に動かし続けることで、なめらかな半熟の食感に仕上がります。', icon:'fry'},
+    {text:'フライパンを傾けながら卵を奥に寄せ、たたむようにして形を整える。', timeMinutes:2, tip:'', icon:'fry'},
+    {text:'{{余熱}}で中まで火を通し、皿に返して盛り付ける。', timeMinutes:1, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'omelette-plate', colors:['#F5CE5E','#F2C14E']}
+},
+{
+  id:'fr-03', name:'白身魚のムニエル', cuisine:'france', mealTypes:['lunch','dinner'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'quick', excludeIngredients:['魚介','乳製品'], lowCalorie:false},
+  cookTimeMinutes:20,
+  nutrition:{kcal:340, protein:24, fat:22, carb:10, salt:1.8},
+  nutritionComment:'白身魚は低脂質・高たんぱくで、バターソースの香りで満足感のある一皿になります。',
+  ingredients:[
+    {name:'白身魚切り身(たら・すずきなど)', amount:2, unit:'切れ'},
+    {name:'薄力粉', amount:null, unit:'適量'},
+    {name:'レモン(くし切り)', amount:2, unit:'切れ'},
+    {name:'パセリ(みじん切り・あれば)', amount:null, unit:'少々'}
+  ],
+  seasonings:[
+    {name:'塩・こしょう', amount:null, unit:'少々'},
+    {name:'バター', amount:20, unit:'g'},
+    {name:'サラダ油', amount:null, unit:'大さじ1'}
+  ],
+  tools:['フライパン','バット','キッチンペーパー'],
+  toolNotes:{},
+  glossary:['下味','中火','乳化'],
+  steps:[
+    {text:'魚の水気をキッチンペーパーでしっかり拭き取り、塩・こしょうで{{下味}}をつける。', timeMinutes:5, tip:'', icon:'season'},
+    {text:'焼く直前に魚の両面に薄力粉を薄くまぶし、余分な粉ははたき落とす。', timeMinutes:3, tip:'粉をまぶすタイミングが早いと水っぽくなるので、焼く直前に行います。', icon:'cut'},
+    {text:'フライパンに油を熱し、魚の皮目(または表になる面)から{{中火}}で焼く。', timeMinutes:4, tip:'', icon:'fry'},
+    {text:'こんがり焼けたら裏返し、フライパンの端にバターを加える。', timeMinutes:3, tip:'', icon:'fry'},
+    {text:'溶けたバターを魚にスプーンでかけながら焼き、{{乳化}}したソースのようなとろりとした香ばしさをまとわせる。', timeMinutes:2, tip:'', icon:'simmer'},
+    {text:'皿に盛り、レモンとパセリを添える。', timeMinutes:1, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'plate-main', colors:['#D9A24A','#F2C14E','#8FBF6B']}
+},
+{
+  id:'it-01', name:'ペペロンチーノ', cuisine:'italy', mealTypes:['lunch','dinner'], baseServings:2,
+  tags:{spiceLevel:'medium', timeLevel:'quick', excludeIngredients:[], lowCalorie:false},
+  cookTimeMinutes:20,
+  nutrition:{kcal:480, protein:12, fat:16, carb:72, salt:2.0},
+  nutritionComment:'シンプルな材料で作る、パスタ料理の基本技術が身につく一皿です。',
+  ingredients:[
+    {name:'スパゲッティ', amount:200, unit:'g'},
+    {name:'にんにく', amount:2, unit:'片'},
+    {name:'赤唐辛子', amount:1, unit:'本'},
+    {name:'パセリ(みじん切り・あれば)', amount:null, unit:'少々'}
+  ],
+  seasonings:[
+    {name:'塩(茹で用)', amount:null, unit:'大さじ1'},
+    {name:'オリーブオイル', amount:null, unit:'大さじ4'},
+    {name:'塩', amount:null, unit:'少々'}
+  ],
+  tools:['鍋','フライパン','包丁','まな板','トング'],
+  toolNotes:{},
+  glossary:['乳化'],
+  steps:[
+    {text:'大きめの鍋にたっぷりの湯を沸かし、塩を加えてパスタを表示時間通りに茹で始める。', timeMinutes:10, tip:'', icon:'boil'},
+    {text:'にんにくは薄切り、唐辛子は種を取って輪切りにする。', timeMinutes:3, tip:'', icon:'cut'},
+    {text:'フライパンにオリーブオイルとにんにく・唐辛子を入れ、弱火でじっくり香りを引き出す。', timeMinutes:4, tip:'にんにくは焦がすと苦味が出るので、必ず弱火でじっくり火を入れます。', icon:'stir'},
+    {text:'茹で上がる1分前にパスタをフライパンに移し、茹で汁お玉1杯を加える。', timeMinutes:1, tip:'', icon:'mix'},
+    {text:'フライパンを揺すりながらオイルと茹で汁を{{乳化}}させ、パスタ全体にとろみのあるソースを絡める。', timeMinutes:2, tip:'', icon:'stir'},
+    {text:'塩で味を調え、皿に盛りパセリを散らす。', timeMinutes:1, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'pasta-plate', colors:['#C0392B','#6FAF5A']}
+},
+{
+  id:'it-02', name:'ミネストローネ', cuisine:'italy', mealTypes:['lunch'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'standard', excludeIngredients:[], lowCalorie:true},
+  cookTimeMinutes:35,
+  nutrition:{kcal:180, protein:6, fat:6, carb:26, salt:1.8},
+  nutritionComment:'野菜がたっぷり摂れる低カロリーなスープで、食物繊維も豊富です。',
+  ingredients:[
+    {name:'キャベツ', amount:100, unit:'g'},
+    {name:'にんじん', amount:0.5, unit:'本'},
+    {name:'セロリ', amount:0.5, unit:'本'},
+    {name:'じゃがいも', amount:1, unit:'個'},
+    {name:'ベーコン(あれば)', amount:40, unit:'g'},
+    {name:'にんにく(みじん切り)', amount:null, unit:'小さじ1'},
+    {name:'トマト缶(カット)', amount:1, unit:'缶'}
+  ],
+  seasonings:[
+    {name:'コンソメ(顆粒)', amount:null, unit:'小さじ2'},
+    {name:'オリーブオイル', amount:null, unit:'大さじ1'},
+    {name:'塩・こしょう', amount:null, unit:'少々'},
+    {name:'水', amount:400, unit:'ml'}
+  ],
+  tools:['鍋','包丁','まな板'],
+  toolNotes:{},
+  glossary:['一口大','アク取り','ひと煮立ち'],
+  steps:[
+    {text:'野菜とベーコンはすべて1〜1.5cm角の{{一口大}}に切りそろえる。', timeMinutes:10, tip:'', icon:'cut'},
+    {text:'鍋にオリーブオイルとにんにくを熱し、香りが立ったらベーコンを炒める。', timeMinutes:3, tip:'', icon:'stir'},
+    {text:'野菜を加えて全体に油が回るまで炒める。', timeMinutes:4, tip:'', icon:'stir'},
+    {text:'トマト缶・水・コンソメを加え、{{ひと煮立ち}}させたら{{アク取り}}をする。', timeMinutes:5, tip:'', icon:'boil'},
+    {text:'弱火にして野菜が柔らかくなるまで20分ほど煮込む。', timeMinutes:20, tip:'', icon:'simmer'},
+    {text:'塩・こしょうで味を調え、器に盛る。', timeMinutes:2, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'soup-bowl', colors:['#D9573B','#F0954A','#8FBF6B']}
+},
+{
+  id:'it-03', name:'鶏肉のカチャトーラ', cuisine:'italy', mealTypes:['dinner'], baseServings:2,
+  tags:{spiceLevel:'mild', timeLevel:'slow', excludeIngredients:['きのこ'], lowCalorie:false},
+  cookTimeMinutes:45,
+  nutrition:{kcal:380, protein:26, fat:18, carb:20, salt:2.2},
+  nutritionComment:'鶏肉とトマト・きのこの煮込みで、たんぱく質と野菜の旨みをじっくり味わえます。',
+  ingredients:[
+    {name:'鶏もも肉', amount:400, unit:'g'},
+    {name:'玉ねぎ', amount:0.5, unit:'個'},
+    {name:'マッシュルーム', amount:100, unit:'g'},
+    {name:'パプリカ', amount:1, unit:'個'},
+    {name:'にんにく', amount:1, unit:'片'},
+    {name:'トマト缶(カット)', amount:1, unit:'缶'}
+  ],
+  seasonings:[
+    {name:'白ワインまたは酒', amount:50, unit:'ml'},
+    {name:'オリーブオイル', amount:null, unit:'大さじ1.5'},
+    {name:'塩・こしょう', amount:null, unit:'少々'},
+    {name:'ローリエ', amount:null, unit:'1枚'}
+  ],
+  tools:['フライパンまたは深めの鍋','包丁','まな板'],
+  toolNotes:{'フライパンまたは深めの鍋':'蓋付きのフライパンでも代用可'},
+  glossary:['一口大','下味','中火','ひと煮立ち'],
+  steps:[
+    {text:'鶏肉は{{一口大}}に切り、塩・こしょうで{{下味}}をつける。玉ねぎ・パプリカ・マッシュルームは食べやすく切る。', timeMinutes:10, tip:'', icon:'cut'},
+    {text:'フライパンにオリーブオイルを熱し、鶏肉の皮目から{{中火}}で焼き色をつける。', timeMinutes:5, tip:'', icon:'fry'},
+    {text:'にんにく・玉ねぎを加えて炒め、しんなりしたら白ワインを加えてアルコールを飛ばす。', timeMinutes:3, tip:'', icon:'stir'},
+    {text:'マッシュルーム・パプリカ・トマト缶・ローリエを加え、{{ひと煮立ち}}させる。', timeMinutes:3, tip:'', icon:'boil'},
+    {text:'蓋をして弱火で20〜25分、鶏肉が柔らかくなるまで煮込む。', timeMinutes:22, tip:'', icon:'simmer'},
+    {text:'塩・こしょうで味を調え、器に盛る。', timeMinutes:2, tip:'', icon:'plate'}
+  ],
+  finishedIllustration:{type:'pot-stew', colors:['#C8492E','#E3A15B','#8A8377','#F2C14E']}
+}
+];
+
+/* =========================================================
+   状態管理 (localStorage)
+   ========================================================= */
+const STORAGE_KEY = 'cookingAppState_v1';
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {};
+}
+let appState = loadState();
+if(!appState.checks) appState.checks = {};
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); }catch(e){}
+}
+function getChecks(recipeId, section, length){
+  if(!appState.checks[recipeId]) appState.checks[recipeId] = {};
+  if(!appState.checks[recipeId][section] || appState.checks[recipeId][section].length !== length){
+    appState.checks[recipeId][section] = new Array(length).fill(false);
+  }
+  return appState.checks[recipeId][section];
+}
+
+let condition = Object.assign({
+  cuisine:'japan', meal:'dinner', servings:2, spiceLevel:'any', timeLevel:'any',
+  excludeTags:[], lowCalorieOnly:false
+}, appState.lastConditions || {});
+
+let currentFilteredRecipes = [];
+let detailServings = 2;
+let detailOrigin = 'screen-list';
+
+/* =========================================================
+   フォーム(トップ画面)描画
+   ========================================================= */
+function renderChipGroup(containerId, options, isSelected, multi, onChange){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  options.forEach(function(opt){
+    const key = (typeof opt === 'object') ? opt.key : opt;
+    const label = (typeof opt === 'object') ? opt.label : (key + '名');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chip' + (isSelected(key) ? ' selected' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', function(){ onChange(key); syncFormUI(); });
+    el.appendChild(btn);
+  });
+}
+function syncFormUI(){
+  renderChipGroup('cuisine-chips', CUISINES, function(k){ return condition.cuisine === k; }, false, function(k){ condition.cuisine = k; });
+  renderChipGroup('meal-chips', MEALS, function(k){ return condition.meal === k; }, false, function(k){ condition.meal = k; });
+  renderChipGroup('servings-chips', SERVINGS_OPTIONS, function(k){ return condition.servings === k; }, false, function(k){ condition.servings = k; });
+  renderChipGroup('spice-chips', SPICE_LEVELS, function(k){ return condition.spiceLevel === k; }, false, function(k){ condition.spiceLevel = k; });
+  renderChipGroup('time-chips', TIME_LEVELS, function(k){ return condition.timeLevel === k; }, false, function(k){ condition.timeLevel = k; });
+  renderChipGroup('exclude-chips', EXCLUDABLE_TAGS, function(k){ return condition.excludeTags.indexOf(k) !== -1; }, true, function(k){
+    const idx = condition.excludeTags.indexOf(k);
+    if(idx === -1) condition.excludeTags.push(k); else condition.excludeTags.splice(idx,1);
+  });
+  document.getElementById('lowcal-check').checked = !!condition.lowCalorieOnly;
+}
+document.getElementById('lowcal-check').addEventListener('change', function(e){
+  condition.lowCalorieOnly = e.target.checked;
+});
+document.getElementById('condition-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  appState.lastConditions = condition;
+  saveState();
+  const results = filterRecipes(condition);
+  currentFilteredRecipes = results;
+  renderListScreen(results);
+  showScreen('screen-list');
+});
+
+/* =========================================================
+   フィルタリング・一覧画面
+   ========================================================= */
+function filterRecipes(cond){
+  return RECIPES.filter(function(r){
+    if(r.cuisine !== cond.cuisine) return false;
+    if(r.mealTypes.indexOf(cond.meal) === -1) return false;
+    if(cond.spiceLevel !== 'any' && r.tags.spiceLevel !== cond.spiceLevel) return false;
+    if(cond.timeLevel !== 'any' && r.tags.timeLevel !== cond.timeLevel) return false;
+    if(cond.lowCalorieOnly && !r.tags.lowCalorie) return false;
+    for(var i=0;i<cond.excludeTags.length;i++){
+      if(r.tags.excludeIngredients.indexOf(cond.excludeTags[i]) !== -1) return false;
+    }
+    return true;
+  });
+}
+function renderListScreen(results){
+  document.getElementById('list-condition-summary').textContent =
+    CUISINE_LABEL[condition.cuisine] + ' ・ ' + mealLabel(condition.meal) + ' ・ ' + condition.servings + '名分の候補: ' + results.length + '件';
+  const container = document.getElementById('list-results');
+  container.innerHTML = '';
+  if(results.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'empty-message';
+    empty.innerHTML = '<p>条件に合うメニューが見つかりませんでした。<br>辛さや調理時間を「指定なし」にするか、除外食材のチェックを減らしてみてください。</p>';
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'btn btn-secondary';
+    btn.textContent = '条件を変更する';
+    btn.addEventListener('click', function(){ showScreen('screen-top'); });
+    empty.appendChild(btn);
+    container.appendChild(empty);
+    return;
+  }
+  const grid = document.createElement('div');
+  grid.className = 'recipe-grid';
+  results.forEach(function(r){
+    grid.appendChild(renderRecipeCard(r, 'screen-list'));
+  });
+  container.appendChild(grid);
+}
+function mealLabel(k){ const m = MEALS.filter(function(x){return x.key===k;})[0]; return m ? m.label : k; }
+function renderRecipeCard(r, origin){
+  const div = document.createElement('div');
+  div.className = 'recipe-card';
+  let badges = '<span class="badge">'+SPICE_LABEL[r.tags.spiceLevel]+'</span>';
+  if(r.tags.timeLevel === 'quick') badges += '<span class="badge badge-accent">はじめの一品</span>';
+  if(r.tags.lowCalorie) badges += '<span class="badge">低カロリー</span>';
+  div.innerHTML =
+    '<div class="card-illust">'+dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, 110)+'</div>' +
+    '<div class="card-body">' +
+      '<h3>'+r.name+'</h3>' +
+      '<div class="badge-row">'+badges+'</div>' +
+      '<p class="card-meta">'+r.nutrition.kcal+'kcal(1人分)・調理目安'+r.cookTimeMinutes+'分</p>' +
+    '</div>';
+  div.addEventListener('click', function(){ openDetail(r.id, origin); });
+  return div;
+}
+
+/* =========================================================
+   登録メニュー一覧画面(国別ブラウズ)
+   ========================================================= */
+function openAllMenu(){
+  renderAllMenuScreen();
+  showScreen('screen-all');
+}
+function renderAllMenuScreen(){
+  document.getElementById('all-menu-count').textContent = '全'+RECIPES.length+'品を国・料理ジャンル別に掲載しています。';
+  const container = document.getElementById('all-menu-results');
+  container.innerHTML = '';
+  CUISINES.forEach(function(c){
+    const recipesOfCuisine = RECIPES.filter(function(r){ return r.cuisine === c.key; });
+    if(recipesOfCuisine.length === 0) return;
+    const section = document.createElement('div');
+    section.className = 'cuisine-section';
+    const heading = document.createElement('h3');
+    heading.innerHTML = c.label + ' <span class="cuisine-count">('+recipesOfCuisine.length+'品)</span>';
+    section.appendChild(heading);
+    const grid = document.createElement('div');
+    grid.className = 'recipe-grid';
+    recipesOfCuisine.forEach(function(r){
+      grid.appendChild(renderRecipeCard(r, 'screen-all'));
+    });
+    section.appendChild(grid);
+    container.appendChild(section);
+  });
+}
+
+/* =========================================================
+   レシピ詳細画面
+   ========================================================= */
+function recipeGlossary(r){
+  const g = {};
+  (r.glossary || []).forEach(function(k){ if(GLOSSARY_COMMON[k]) g[k] = GLOSSARY_COMMON[k]; });
+  return g;
+}
+function renderStepText(text, glossary){
+  return text.replace(/\{\{(.+?)\}\}/g, function(m, term){
+    const def = glossary[term] || '';
+    return '<span class="term" tabindex="0">'+term+'<span class="term-tip">'+def+'</span></span>';
+  });
+}
+function formatFraction(v){
+  if(Number.isInteger(v)) return String(v);
+  const roundedHalf = Math.round(v*2)/2;
+  const whole = Math.floor(roundedHalf);
+  const frac = roundedHalf - whole;
+  if(frac === 0.5) return whole > 0 ? (whole+'と1/2') : '1/2';
+  return String(Math.round(v*10)/10);
+}
+const PIECE_UNITS = ['個','本','片','枚','缶','尾','切れ'];
+function scaleDisplay(amount, unit, base, target){
+  if(amount === null || amount === undefined) return unit;
+  const v = amount * target / base;
+  if(PIECE_UNITS.indexOf(unit) !== -1){
+    return formatFraction(v) + unit;
+  }
+  const rounded = v >= 10 ? Math.round(v) : Math.round(v*10)/10;
+  return rounded + unit;
+}
+function openDetail(id, origin){
+  const r = RECIPES.filter(function(x){ return x.id === id; })[0];
+  if(!r) return;
+  detailOrigin = origin || 'screen-list';
+  document.getElementById('detail-back-btn').textContent =
+    detailOrigin === 'screen-all' ? '← メニュー一覧に戻る' : '← 候補一覧に戻る';
+  detailServings = condition.servings || r.baseServings;
+  renderDetail(r);
+  showScreen('screen-detail');
+}
+function backFromDetail(){
+  if(detailOrigin === 'screen-all'){
+    renderAllMenuScreen();
+    showScreen('screen-all');
+  } else {
+    renderListScreen(currentFilteredRecipes);
+    showScreen('screen-list');
+  }
+}
+function renderDetail(r){
+  const glossary = recipeGlossary(r);
+  const content = document.getElementById('detail-content');
+
+  let html = '';
+  html += '<div class="detail-header">';
+  html += '<div class="detail-illust">'+dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, 170)+'</div>';
+  html += '<h2>'+r.name+'</h2>';
+  html += '<div class="badge-row">' +
+    '<span class="badge">'+CUISINE_LABEL[r.cuisine]+'</span>' +
+    '<span class="badge">'+SPICE_LABEL[r.tags.spiceLevel]+'</span>' +
+    '<span class="badge">調理目安'+r.cookTimeMinutes+'分</span></div>';
+  html += '<div class="servings-control" id="servings-control"></div>';
+  html += '</div>';
+
+  html += '<div class="section-card"><h3>栄養バランス(1人分あたり)</h3>';
+  html += '<div class="nutrition-grid">' +
+    '<div class="item"><div class="value">'+r.nutrition.kcal+'</div><div class="label">kcal</div></div>' +
+    '<div class="item"><div class="value">'+r.nutrition.protein+'g</div><div class="label">たんぱく質</div></div>' +
+    '<div class="item"><div class="value">'+r.nutrition.fat+'g</div><div class="label">脂質</div></div>' +
+    '<div class="item"><div class="value">'+r.nutrition.carb+'g</div><div class="label">炭水化物</div></div>' +
+    '<div class="item"><div class="value">'+r.nutrition.salt+'g</div><div class="label">塩分相当量</div></div>' +
+  '</div>';
+  html += '<p class="nutrition-comment">'+r.nutritionComment+'</p></div>';
+
+  html += '<div class="section-card"><h3>食材</h3><ul class="check-list" id="ingredient-list"></ul></div>';
+  html += '<div class="section-card"><h3>調味料</h3><ul class="check-list" id="seasoning-list"></ul></div>';
+
+  html += '<div class="section-card"><h3>調理器具</h3><ul class="tool-list">';
+  r.tools.forEach(function(t){
+    html += '<li>'+t + (r.toolNotes && r.toolNotes[t] ? '<span class="tool-note">'+r.toolNotes[t]+'</span>' : '') + '</li>';
+  });
+  html += '</ul></div>';
+
+  html += '<div class="section-card"><h3>作り方</h3><ol class="step-list" id="step-list"></ol></div>';
+
+  content.innerHTML = html;
+
+  renderChipGroup('servings-control', SERVINGS_OPTIONS, function(k){ return detailServings === k; }, false, function(k){
+    detailServings = k; renderDetail(r);
+  });
+
+  renderIngredientChecklist('ingredient-list', r, 'ingredients');
+  renderIngredientChecklist('seasoning-list', r, 'seasonings');
+  renderSteps(r, glossary);
+
+  bindTermTooltips();
+}
+function renderIngredientChecklist(containerId, r, section){
+  const list = document.getElementById(containerId);
+  const items = r[section];
+  const checks = getChecks(r.id, section, items.length);
+  list.innerHTML = '';
+  items.forEach(function(item, idx){
+    const li = document.createElement('li');
+    if(checks[idx]) li.classList.add('checked');
+    const display = scaleDisplay(item.amount, item.unit, r.baseServings, detailServings);
+    li.innerHTML = '<input type="checkbox" '+(checks[idx] ? 'checked' : '')+'><span class="item-text">'+item.name+' <strong>'+display+'</strong></span>';
+    li.querySelector('input').addEventListener('change', function(e){
+      checks[idx] = e.target.checked;
+      li.classList.toggle('checked', e.target.checked);
+      saveState();
+    });
+    list.appendChild(li);
+  });
+}
+function renderSteps(r, glossary){
+  const list = document.getElementById('step-list');
+  const checks = getChecks(r.id, 'steps', r.steps.length);
+  list.innerHTML = '';
+  r.steps.forEach(function(step, idx){
+    const li = document.createElement('li');
+    li.className = 'step-item' + (checks[idx] ? ' checked' : '');
+    let inner = '<div class="step-icon-wrap">'+(STEP_ICONS[step.icon] || '')+'</div>';
+    inner += '<div class="step-body">';
+    inner += '<div class="step-meta-row"><span class="step-num">STEP '+(idx+1)+'</span><span class="step-time">目安 '+step.timeMinutes+'分</span></div>';
+    inner += '<p class="step-text">'+renderStepText(step.text, glossary)+'</p>';
+    if(step.tip) inner += '<p class="step-tip">コツ: '+step.tip+'</p>';
+    inner += '</div>';
+    inner += '<div class="step-check"><input type="checkbox" '+(checks[idx] ? 'checked' : '')+'></div>';
+    li.innerHTML = inner;
+    li.querySelector('.step-check input').addEventListener('change', function(e){
+      checks[idx] = e.target.checked;
+      li.classList.toggle('checked', e.target.checked);
+      saveState();
+    });
+    list.appendChild(li);
+  });
+}
+function bindTermTooltips(){
+  document.querySelectorAll('.term').forEach(function(el){
+    el.addEventListener('click', function(e){
+      e.stopPropagation();
+      const wasOpen = el.classList.contains('open');
+      document.querySelectorAll('.term.open').forEach(function(t){ t.classList.remove('open'); });
+      if(!wasOpen) el.classList.add('open');
+    });
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        el.click();
+      }
+    });
+  });
+  document.addEventListener('click', function(){
+    document.querySelectorAll('.term.open').forEach(function(t){ t.classList.remove('open'); });
+  });
+}
+
+/* =========================================================
+   画面切り替え・初期化
+   ========================================================= */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  document.getElementById('home-btn').hidden = (id === 'screen-top');
+  document.getElementById('allmenu-btn').hidden = (id === 'screen-all');
+  window.scrollTo(0,0);
+}
+function init(){
+  syncFormUI();
+  showScreen('screen-top');
+}
+init();
+</script>
+</body>
+</html>
