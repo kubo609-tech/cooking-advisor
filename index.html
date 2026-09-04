@@ -1205,6 +1205,11 @@ const RECIPES = [
 }
 ];
 
+// 初期登録レシピの原本スナップショット(編集を「初期状態に戻す」ために保持)
+function cloneRecipe(r){ return JSON.parse(JSON.stringify(r)); }
+const BUILTIN_RECIPES = RECIPES.map(cloneRecipe);
+const BUILTIN_ID_SET = {}; BUILTIN_RECIPES.forEach(function(b){ BUILTIN_ID_SET[b.id] = true; });
+
 /* =========================================================
    状態管理 (localStorage)
    ========================================================= */
@@ -1247,14 +1252,32 @@ function loadUserRecipes(){
 function saveUserRecipes(){
   try{ localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(USER_RECIPES)); }catch(e){}
 }
+// ユーザーが新規に追加したレシピ(初期レシピの編集ではない)か
+function isUserAdded(r){
+  const id = (typeof r === 'string') ? r : (r && r.id);
+  return typeof id === 'string' && id.indexOf('user-') === 0;
+}
+function isBuiltinId(id){ return !!BUILTIN_ID_SET[id]; }
+// 初期レシピに対して保存済みの編集(オーバーライド)があるか
+function hasBuiltinOverride(id){
+  if(!isBuiltinId(id)) return false;
+  for(var i = 0; i < USER_RECIPES.length; i++){ if(USER_RECIPES[i].id === id) return true; }
+  return false;
+}
+// 「自作」バッジ相当(新規追加 or 初期レシピの編集)
 function isUserRecipe(r){
-  return !!(r && (r.userAdded || (typeof r.id === 'string' && r.id.indexOf('user-') === 0)));
+  return isUserAdded(r) || hasBuiltinOverride(r && r.id);
 }
 function syncUserRecipesIntoMain(){
-  for(var i = RECIPES.length - 1; i >= 0; i--){
-    if(isUserRecipe(RECIPES[i])) RECIPES.splice(i, 1);
-  }
-  USER_RECIPES.forEach(function(r){ RECIPES.push(r); });
+  RECIPES.length = 0;
+  const userById = {};
+  USER_RECIPES.forEach(function(r){ userById[r.id] = r; });
+  const placed = {};
+  BUILTIN_RECIPES.forEach(function(b){
+    if(userById[b.id]){ RECIPES.push(userById[b.id]); placed[b.id] = true; }
+    else RECIPES.push(cloneRecipe(b));
+  });
+  USER_RECIPES.forEach(function(r){ if(!placed[r.id]) RECIPES.push(r); });
 }
 
 let condition = Object.assign({
@@ -1384,7 +1407,8 @@ function renderRecipeCard(r, origin){
   const div = document.createElement('div');
   div.className = 'recipe-card';
   let badges = '';
-  if(isUserRecipe(r)) badges += '<span class="badge badge-user">自作</span>';
+  if(isUserAdded(r)) badges += '<span class="badge badge-user">自作</span>';
+  else if(hasBuiltinOverride(r.id)) badges += '<span class="badge badge-user">編集済み</span>';
   badges += '<span class="badge">'+SPICE_LABEL[r.tags.spiceLevel]+'</span>';
   if(r.tags.timeLevel === 'quick') badges += '<span class="badge badge-accent">はじめの一品</span>';
   if(r.tags.lowCalorie) badges += '<span class="badge">低カロリー</span>';
@@ -1503,17 +1527,20 @@ function renderDetail(r){
   }
   html += '<h2>'+esc(r.name)+'</h2>';
   html += '<div class="badge-row">' +
-    (isUserRecipe(r) ? '<span class="badge badge-user">自作</span>' : '') +
+    (isUserAdded(r) ? '<span class="badge badge-user">自作</span>'
+      : (hasBuiltinOverride(r.id) ? '<span class="badge badge-user">編集済み</span>' : '')) +
     '<span class="badge">'+CUISINE_LABEL[r.cuisine]+'</span>' +
     '<span class="badge">'+SPICE_LABEL[r.tags.spiceLevel]+'</span>' +
     '<span class="badge">調理目安'+r.cookTimeMinutes+'分</span></div>';
   html += '<div class="servings-control" id="servings-control"></div>';
-  if(isUserRecipe(r)){
-    html += '<div class="user-recipe-actions">' +
-      '<button type="button" id="detail-edit-btn">&#9998; 編集する</button>' +
-      '<button type="button" class="danger" id="detail-delete-btn">&#128465; 削除する</button>' +
-    '</div>';
-  }
+  html += '<div class="user-recipe-actions">' +
+    '<button type="button" id="detail-edit-btn">&#9998; 編集する</button>' +
+    (isUserAdded(r)
+      ? '<button type="button" class="danger" id="detail-delete-btn">&#128465; 削除する</button>'
+      : (hasBuiltinOverride(r.id)
+        ? '<button type="button" class="danger" id="detail-revert-btn">&#8617; 編集を取り消す</button>'
+        : '')) +
+  '</div>';
   html += '</div>';
 
   html += '<div class="section-card"><h3>栄養バランス(1人分あたり)</h3>';
@@ -1549,12 +1576,12 @@ function renderDetail(r){
 
   bindTermTooltips();
 
-  if(isUserRecipe(r)){
-    const editBtn = document.getElementById('detail-edit-btn');
-    const delBtn = document.getElementById('detail-delete-btn');
-    if(editBtn) editBtn.addEventListener('click', function(){ openAddForm(r.id); });
-    if(delBtn) delBtn.addEventListener('click', function(){ removeUserRecipe(r.id); });
-  }
+  const editBtn = document.getElementById('detail-edit-btn');
+  if(editBtn) editBtn.addEventListener('click', function(){ openAddForm(r.id); });
+  const delBtn = document.getElementById('detail-delete-btn');
+  if(delBtn) delBtn.addEventListener('click', function(){ removeUserRecipe(r.id); });
+  const revBtn = document.getElementById('detail-revert-btn');
+  if(revBtn) revBtn.addEventListener('click', function(){ revertBuiltinRecipe(r.id); });
 }
 function renderIngredientChecklist(containerId, r, section){
   const list = document.getElementById(containerId);
@@ -1681,10 +1708,18 @@ function addDynRow(kind, data){
   container.appendChild(row);
 }
 
-function matchColorPreset(colors){
+// 配色が既定プリセットのどれかに一致すればそのキー、しなければ null
+function colorPresetKeyFor(colors){
   const j = JSON.stringify(colors || []);
   const hit = DISH_COLOR_PRESETS.filter(function(p){ return p.colors && JSON.stringify(p.colors) === j; })[0];
-  return hit ? hit.key : 'default';
+  return hit ? hit.key : null;
+}
+function currentAddColors(){
+  const type = document.getElementById('add-dish-type').value;
+  const presetKey = document.getElementById('add-dish-color').value;
+  if(presetKey === '__keep' && addDraft && addDraft.baseColors) return addDraft.baseColors;
+  const preset = DISH_COLOR_PRESETS.filter(function(p){ return p.key === presetKey; })[0];
+  return (preset && preset.colors) ? preset.colors : DISH_DEFAULT_COLORS[type];
 }
 function updateDishPreview(){
   const wrap = document.getElementById('add-dish-preview');
@@ -1697,10 +1732,7 @@ function updateDishPreview(){
     return;
   }
   const type = document.getElementById('add-dish-type').value;
-  const presetKey = document.getElementById('add-dish-color').value;
-  const preset = DISH_COLOR_PRESETS.filter(function(p){ return p.key === presetKey; })[0];
-  const colors = (preset && preset.colors) ? preset.colors : DISH_DEFAULT_COLORS[type];
-  wrap.innerHTML = dishSVG(type, colors, 150);
+  wrap.innerHTML = dishSVG(type, currentAddColors(), 150);
 }
 
 /* ---- 完成イメージの写真検索 ---- */
@@ -2133,7 +2165,14 @@ function renderAddForm(prefill, isEdit){
 
   document.getElementById('add-form-title').textContent = isEdit ? 'メニューを編集する' : 'メニューを追加する';
   document.getElementById('add-submit-btn').textContent = isEdit ? 'この内容で更新する' : 'この内容で登録する';
-  document.getElementById('add-delete-btn').hidden = !isEdit;
+  const addDelBtn = document.getElementById('add-delete-btn');
+  if(isEdit && editingRecipeId && isBuiltinId(editingRecipeId)){
+    addDelBtn.textContent = 'この編集を取り消す(初期状態に戻す)';
+    addDelBtn.hidden = !hasBuiltinOverride(editingRecipeId);
+  } else {
+    addDelBtn.textContent = 'このレシピを削除する';
+    addDelBtn.hidden = !isEdit;
+  }
   setupAiPanel(isEdit, !prefill);
 
   document.getElementById('add-name').value = prefill ? prefill.name : '';
@@ -2167,9 +2206,18 @@ function renderAddForm(prefill, isEdit){
   typeSel.innerHTML = DISH_TYPES.map(function(d){ return '<option value="'+d.key+'">'+d.label+'</option>'; }).join('');
   const colorSel = document.getElementById('add-dish-color');
   colorSel.innerHTML = DISH_COLOR_PRESETS.map(function(p){ return '<option value="'+p.key+'">'+p.label+'</option>'; }).join('');
+  addDraft.baseColors = (prefill && prefill.finishedIllustration && prefill.finishedIllustration.colors)
+    ? prefill.finishedIllustration.colors.slice() : null;
   if(prefill && prefill.finishedIllustration){
-    typeSel.value = prefill.finishedIllustration.type;
-    colorSel.value = matchColorPreset(prefill.finishedIllustration.colors);
+    typeSel.value = DISH_DEFAULT_COLORS[prefill.finishedIllustration.type] ? prefill.finishedIllustration.type : 'plate-main';
+    const pk = colorPresetKeyFor(prefill.finishedIllustration.colors);
+    if(pk){
+      colorSel.value = pk;
+    } else {
+      // 初期レシピなど、プリセットに一致しない配色はそのまま維持できるようにする
+      colorSel.insertAdjacentHTML('beforeend', '<option value="__keep">元の配色を維持</option>');
+      colorSel.value = '__keep';
+    }
   } else {
     typeSel.value = 'plate-main';
     colorSel.value = 'default';
@@ -2261,9 +2309,8 @@ function collectAddForm(){
   });
 
   const dishType = document.getElementById('add-dish-type').value;
-  const presetKey = document.getElementById('add-dish-color').value;
-  const preset = DISH_COLOR_PRESETS.filter(function(p){ return p.key === presetKey; })[0];
-  const colors = (preset && preset.colors) ? preset.colors.slice() : (DISH_DEFAULT_COLORS[dishType] || []).slice();
+  const colors = (currentAddColors() || DISH_DEFAULT_COLORS[dishType] || []).slice();
+  const editingBuiltin = !!(editingRecipeId && isBuiltinId(editingRecipeId));
 
   const recipe = {
     id: editingRecipeId || ('user-' + Date.now()),
@@ -2303,7 +2350,7 @@ function collectAddForm(){
       landingUrl: addDraft.photo.landingUrl || ''
     } : null,
     photoQuery: document.getElementById('photo-query').value.trim() || (addDraft.photoQuery || ''),
-    userAdded: true
+    userAdded: !editingBuiltin
   };
   return {ok:true, recipe:recipe};
 }
@@ -2339,8 +2386,19 @@ function removeUserRecipe(id){
   renderAllMenuScreen();
   showScreen('screen-all');
 }
+function revertBuiltinRecipe(id){
+  if(!id || !isBuiltinId(id)) return;
+  if(hasBuiltinOverride(id) && !window.confirm('このレシピへの編集を取り消し、初期状態に戻します。よろしいですか?')) return;
+  USER_RECIPES = USER_RECIPES.filter(function(r){ return r.id !== id; });
+  saveUserRecipes();
+  syncUserRecipesIntoMain();
+  if(appState.checks[id]){ delete appState.checks[id]; saveState(); }
+  editingRecipeId = null;
+  openDetail(id, 'screen-all');
+}
 function deleteEditingRecipe(){
-  removeUserRecipe(editingRecipeId);
+  if(editingRecipeId && isBuiltinId(editingRecipeId)) revertBuiltinRecipe(editingRecipeId);
+  else removeUserRecipe(editingRecipeId);
 }
 
 /* =========================================================
