@@ -1805,12 +1805,21 @@ function showPhotoStatus(msg, kind){
 function stripHtml(s){
   return String(s == null ? '' : s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 }
+const CUISINE_EN = {
+  japan:'japanese', china:'chinese', india:'indian', thailand:'thai', france:'french', italy:'italian'
+};
+// 画像検索に効きにくい装飾語(取り除いて再検索するための一覧)
+const QUERY_STOPWORDS = [
+  '風','香る','香り','とろける','とろとろ','ふわふわ','こんがり','簡単','時短','本格','特製','絶品','極上',
+  '定番','人気','濃厚','あっさり','こってり','やみつき','ジューシー','ごちそう','おふくろの','我が家の','基本の',
+  'アレンジ','おすすめ','お手軽','ヘルシー','style','simple','easy','homemade','the'
+];
 function buildPhotoQuery(){
   const name = document.getElementById('add-name').value.trim();
   const ing = [];
   document.querySelectorAll('#add-ingredient-rows .dr-name').forEach(function(el){
     const v = el.value.trim();
-    if(v && ing.length < 3) ing.push(v);
+    if(v && ing.length < 2) ing.push(v);
   });
   const parts = [];
   if(name) parts.push(name);
@@ -1818,6 +1827,40 @@ function buildPhotoQuery(){
   parts.push.apply(parts, ing);
   if(!name && !ing.length) parts.push('料理');
   return parts.join(' ').slice(0, 80);
+}
+// 全角/半角スペース区切りで語に分割
+function splitTerms(s){
+  return String(s || '').replace(/[　]/g, ' ').split(/\s+/).filter(Boolean);
+}
+// 具体的 → 抽象的の順に検索クエリ候補を生成(1件でもヒットするまで順に試す)
+function buildQueryVariants(raw, cuisineKey){
+  const out = [];
+  const add = function(s){
+    s = String(s || '').replace(/[　]/g, ' ').replace(/\s+/g, ' ').trim();
+    if(s && out.indexOf(s) === -1) out.push(s);
+  };
+  const terms = splitTerms(raw);
+  // 1: 入力そのまま
+  add(terms.join(' '));
+  // 2: 装飾的な語を除去(語単位)
+  const cleaned = terms
+    .map(function(t){ return t.replace(/^お/, ''); })
+    .filter(function(t){ return t && QUERY_STOPWORDS.indexOf(t) === -1 && QUERY_STOPWORDS.indexOf(t.toLowerCase()) === -1; });
+  add(cleaned.join(' '));
+  // 3: 文字列全体からも装飾語の部分文字列と中間の「風」を除去(例:「インド風肉じゃが」→「インド肉じゃが」)
+  let deco = cleaned.join(' ');
+  QUERY_STOPWORDS.forEach(function(w){ if(w.length > 1) deco = deco.split(w).join(''); });
+  deco = deco.replace(/風(?=.)/g, '').replace(/\s+/g, ' ').trim();
+  add(deco);
+  // 4: 中心となる語だけ(日本語は名詞が後ろに来やすい)
+  const core = splitTerms(deco);
+  if(core.length >= 1) add(core.slice(-1).join(' '));
+  // 5: 料理ジャンルを英語で補助(ほぼ確実にヒットする)
+  const en = cuisineKey && CUISINE_EN[cuisineKey];
+  if(en) add(en + ' food');
+  // 6: 最終手段(何かしら候補を出す)
+  add('food dish');
+  return out;
 }
 function normalizePhotoItem(raw, source){
   if(source === 'commons'){
@@ -1845,7 +1888,7 @@ function normalizePhotoItem(raw, source){
 }
 async function fetchOpenverse(query){
   const url = OPENVERSE_ENDPOINT + '?q=' + encodeURIComponent(query) +
-    '&license_type=all-cc&page_size=12&mature=false';
+    '&page_size=12&mature=false';
   const resp = await fetch(url, {headers:{'Accept':'application/json'}});
   if(resp.status === 429) throw {soft:'検索回数の上限に達しました。時間をおいて再度お試しください。'};
   if(!resp.ok) throw {soft:'Openverse 検索エラー(' + resp.status + ')'};
@@ -1854,28 +1897,39 @@ async function fetchOpenverse(query){
 }
 async function fetchCommons(query){
   const url = COMMONS_ENDPOINT + '?origin=*&format=json&action=query&generator=search' +
-    '&gsrsearch=' + encodeURIComponent('filetype:bitmap ' + query) +
-    '&gsrnamespace=6&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=400';
+    '&gsrsearch=' + encodeURIComponent(query) +
+    '&gsrnamespace=6&gsrlimit=16&prop=imageinfo&iiprop=url|mime|extmetadata&iiurlwidth=400';
   const resp = await fetch(url);
   if(!resp.ok) throw {soft:'Wikimedia 検索エラー(' + resp.status + ')'};
   const data = await resp.json();
   const pages = (data.query && data.query.pages) ? Object.keys(data.query.pages).map(function(k){ return data.query.pages[k]; }) : [];
-  return pages.map(function(p){ return normalizePhotoItem(p, 'commons'); });
+  return pages
+    .filter(function(p){
+      const ii = p.imageinfo && p.imageinfo[0];
+      return ii && typeof ii.mime === 'string' && ii.mime.indexOf('image/') === 0 && ii.mime !== 'image/svg+xml';
+    })
+    .sort(function(a, b){ return (a.index || 0) - (b.index || 0); })
+    .map(function(p){ return normalizePhotoItem(p, 'commons'); });
 }
-async function searchPhotos(query){
-  let items = [];
-  let firstErr = '';
-  try{ items = await fetchOpenverse(query); }
-  catch(e){ firstErr = (e && e.soft) ? e.soft : ''; }
-  if(!items.length){
-    try{ const c = await fetchCommons(query); if(c.length) items = c; }
-    catch(e){ if(!firstErr) firstErr = (e && e.soft) ? e.soft : ''; }
+// クエリ候補を具体的→抽象的の順に、Openverse→Commons で試し、最初にヒットしたものを返す
+async function searchPhotos(query, cuisineKey){
+  const variants = buildQueryVariants(query, cuisineKey);
+  let lastErr = '';
+  let tried = 0;
+  const MAX_TRIES = 14;
+  for(let i = 0; i < variants.length && tried < MAX_TRIES; i++){
+    const v = variants[i];
+    const sources = [fetchOpenverse, fetchCommons];
+    for(let s = 0; s < sources.length && tried < MAX_TRIES; s++){
+      tried++;
+      try{
+        const items = (await sources[s](v)).filter(function(p){ return p.thumbnail; });
+        if(items.length) return {ok:true, items:items, used:v};
+      }catch(e){ if(e && e.soft) lastErr = e.soft; }
+    }
   }
-  items = items.filter(function(p){ return p.thumbnail; });
-  if(!items.length){
-    return {ok:false, error: firstErr || '該当する写真が見つかりませんでした。検索ワードを変えてお試しください。'};
-  }
-  return {ok:true, items:items};
+  return {ok:false, error: lastErr ||
+    '写真が見つかりませんでした。検索ワードを短く(料理名だけ)する、英語にするなどしてお試しください。'};
 }
 function renderPhotoResults(items){
   const box = document.getElementById('photo-results');
@@ -1906,13 +1960,16 @@ async function onPhotoSearchClick(){
   btn.textContent = '検索中…';
   showPhotoStatus('写真を検索しています…', 'busy');
   try{
-    const res = await searchPhotos(q);
+    const res = await searchPhotos(q, addDraft && addDraft.cuisine);
     if(!res.ok){
       showPhotoStatus(res.error, 'error');
       document.getElementById('photo-results').innerHTML = '';
     } else {
       renderPhotoResults(res.items);
-      showPhotoStatus(res.items.length + '件見つかりました。使いたい写真をタップしてください。', '');
+      const note = (res.used && res.used !== q)
+        ? '「' + res.used + '」で検索した結果です。'
+        : '';
+      showPhotoStatus(res.items.length + '件見つかりました。' + note + '使いたい写真をタップしてください。', '');
     }
   }catch(err){
     showPhotoStatus('検索に失敗しました。オフラインでないか確認してください。', 'error');
@@ -2071,9 +2128,9 @@ function buildRecipeTool(glossaryKeys){
         }, required:['text','timeMinutes','icon']}},
         dishType:{type:'string', enum:DISH_TYPES.map(function(d){ return d.key; }), description:'完成イメージのイラスト種別'},
         colorPreset:{type:'string', enum:['default','warm','green','brown']},
-        photoQuery:{type:'string', description:'完成した料理の写真をネット検索するための短いキーワード。料理名+主な食材+盛り付けの雰囲気を、日本語または英語で。例: "beef and potato simmered stew on a plate"'}
+        photoQuery:{type:'string', description:'完成した料理の写真を画像検索するための英語キーワード(3〜6語)。「料理の一般的な英語名 + 主な食材 + dish / on a plate」の形。装飾的な形容詞は入れない。例: "beef and potato curry stew on a plate"'}
       },
-      required:['name','cuisine','mealTypes','baseServings','cookTimeMinutes','spiceLevel','timeLevel','lowCalorie','nutrition','nutritionComment','ingredients','seasonings','tools','steps','dishType','colorPreset']
+      required:['name','cuisine','mealTypes','baseServings','cookTimeMinutes','spiceLevel','timeLevel','lowCalorie','nutrition','nutritionComment','ingredients','seasonings','tools','steps','dishType','colorPreset','photoQuery']
     }
   };
 }
@@ -2097,7 +2154,7 @@ async function generateRecipeDraft(dishName){
     glossaryKeys.join('、') + '。これ以外の語は囲まないでください。' +
     'icon は各手順の作業内容に最も近いものを列挙値から選びます。' +
     'nutrition は1人分あたりの推定値(目安)で構いません。' +
-    'photoQuery には、完成した料理の写真をネットで探すための短い検索キーワード(料理名+主な食材+盛り付けの雰囲気)を入れます。';
+    'photoQuery には、完成した料理の写真を画像検索するための英語キーワード(3〜6語、装飾語なし。料理の一般的な英語名+主な食材+"dish"など)を入れます。';
   const userMsg =
     '「' + dishName + '」のレシピを作ってください。' +
     (hints.length ? '(想定: ' + hints.join(' / ') + ')' : '') +
