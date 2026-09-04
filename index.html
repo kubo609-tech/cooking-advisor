@@ -288,7 +288,7 @@ footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padd
       <h2 id="add-form-title">メニューを追加する</h2>
       <p class="lead">あなたのレシピを登録すると、条件検索やメニュー一覧に表示されます。内容はこの端末にのみ保存されます。</p>
     </div>
-    <form id="add-form">
+    <form id="add-form" novalidate>
       <div class="ai-panel" id="ai-panel">
         <p class="ai-lead">料理名を入れるだけで、AIが食材・分量・手順・栄養の下書きを作成します。内容は必ず確認・修正してから登録してください(分量や栄養は目安です)。</p>
         <details id="ai-key-details">
@@ -323,7 +323,7 @@ footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padd
       </div>
       <div class="field-group">
         <label class="field-label" for="add-cooktime">調理時間の目安(分)</label>
-        <input type="number" id="add-cooktime" class="num-input" min="1" max="600" placeholder="30">
+        <input type="number" id="add-cooktime" class="num-input" min="0" step="any" placeholder="30">
       </div>
       <div class="field-group">
         <label class="field-label">辛さ</label>
@@ -344,11 +344,11 @@ footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padd
       <div class="field-group">
         <label class="field-label">栄養情報(1人分あたり)</label>
         <div class="nutrition-inputs">
-          <label>エネルギー(kcal)<input type="number" id="add-kcal" min="0" max="3000" placeholder="400"></label>
-          <label>たんぱく質(g)<input type="number" id="add-protein" min="0" max="300" placeholder="20"></label>
-          <label>脂質(g)<input type="number" id="add-fat" min="0" max="300" placeholder="15"></label>
-          <label>炭水化物(g)<input type="number" id="add-carb" min="0" max="500" placeholder="40"></label>
-          <label>塩分相当量(g)<input type="number" id="add-salt" min="0" max="30" step="0.1" placeholder="2.0"></label>
+          <label>エネルギー(kcal)<input type="number" id="add-kcal" min="0" step="any" placeholder="400"></label>
+          <label>たんぱく質(g)<input type="number" id="add-protein" min="0" step="any" placeholder="20"></label>
+          <label>脂質(g)<input type="number" id="add-fat" min="0" step="any" placeholder="15"></label>
+          <label>炭水化物(g)<input type="number" id="add-carb" min="0" step="any" placeholder="40"></label>
+          <label>塩分相当量(g)<input type="number" id="add-salt" min="0" step="any" placeholder="2.0"></label>
         </div>
       </div>
       <div class="field-group">
@@ -483,6 +483,13 @@ function parseNumOrNull(v){
 function parseNumOr0(v){
   const n = parseNumOrNull(v);
   return n == null ? 0 : n;
+}
+// 数値を 0以上・指定桁数に丸めて、フォームにそのまま入力できる値へ補正する
+function sanitizeNum(v, decimals){
+  let n = parseNumOrNull(v);
+  if(n == null || !isFinite(n) || n < 0) n = 0;
+  const f = Math.pow(10, decimals || 0);
+  return Math.round(n * f) / f;
 }
 
 const CUISINE_LABEL = {}; CUISINES.forEach(c => CUISINE_LABEL[c.key] = c.label);
@@ -1579,7 +1586,7 @@ function addDynRow(kind, data){
     row.innerHTML =
       '<textarea class="dr-text" rows="2" placeholder="操作内容(例: 玉ねぎを{{中火}}で炒める)">'+esc(data.text || '')+'</textarea>' +
       '<div class="inline">' +
-        '<input type="number" class="dr-time" min="0" max="600" placeholder="目安分" value="'+(data.timeMinutes != null ? esc(data.timeMinutes) : '')+'">' +
+        '<input type="number" class="dr-time" min="0" step="any" placeholder="目安分" value="'+(data.timeMinutes != null ? esc(data.timeMinutes) : '')+'">' +
         '<select class="dr-icon">'+iconOpts+'</select>' +
       '</div>' +
       '<input type="text" class="dr-tip" placeholder="コツ・注意点(任意)" value="'+esc(data.tip || '')+'">' +
@@ -1594,7 +1601,7 @@ function addDynRow(kind, data){
     row.className = 'dyn-row';
     row.innerHTML =
       '<input type="text" class="dr-name" placeholder="名前" value="'+esc(data.name || '')+'">' +
-      '<input type="number" class="dr-amount" min="0" step="0.1" placeholder="数値" value="'+(data.amount != null ? esc(data.amount) : '')+'">' +
+      '<input type="number" class="dr-amount" min="0" step="any" placeholder="数値" value="'+(data.amount != null ? esc(data.amount) : '')+'">' +
       '<input type="text" class="dr-unit" placeholder="単位(g/ml/個/少々 等)" value="'+esc(data.unit || '')+'">' +
       '<button type="button" class="remove-row">×</button>';
   }
@@ -1806,9 +1813,11 @@ async function generateRecipeDraft(dishName){
 
 function normalizeAiItems(arr){
   return (arr || []).filter(function(x){ return x && x.name; }).map(function(x){
+    const hasAmount = (typeof x.amount === 'number' && isFinite(x.amount));
     return {
       name: String(x.name),
-      amount: (typeof x.amount === 'number' && !isNaN(x.amount)) ? x.amount : null,
+      // 0.25 など端数もそのまま扱えるよう、小数3桁に丸めた0以上の値に補正
+      amount: hasAmount ? sanitizeNum(x.amount, 3) : null,
       unit: (x.unit != null && String(x.unit).trim()) ? String(x.unit).trim() : '適量'
     };
   });
@@ -1829,7 +1838,7 @@ function populateFromAiDraft(ai){
     cuisine: cuisine,
     mealTypes: meals.length ? meals : ['dinner'],
     baseServings: [1,2,3,4].indexOf(ai.baseServings) !== -1 ? ai.baseServings : 2,
-    cookTimeMinutes: parseNumOr0(ai.cookTimeMinutes),
+    cookTimeMinutes: sanitizeNum(ai.cookTimeMinutes, 0),
     tags:{
       spiceLevel: spice,
       timeLevel: timeLv,
@@ -1837,11 +1846,11 @@ function populateFromAiDraft(ai){
       lowCalorie: !!ai.lowCalorie
     },
     nutrition:{
-      kcal: parseNumOr0(ai.nutrition && ai.nutrition.kcal),
-      protein: parseNumOr0(ai.nutrition && ai.nutrition.protein),
-      fat: parseNumOr0(ai.nutrition && ai.nutrition.fat),
-      carb: parseNumOr0(ai.nutrition && ai.nutrition.carb),
-      salt: parseNumOr0(ai.nutrition && ai.nutrition.salt)
+      kcal: sanitizeNum(ai.nutrition && ai.nutrition.kcal, 0),
+      protein: sanitizeNum(ai.nutrition && ai.nutrition.protein, 1),
+      fat: sanitizeNum(ai.nutrition && ai.nutrition.fat, 1),
+      carb: sanitizeNum(ai.nutrition && ai.nutrition.carb, 1),
+      salt: sanitizeNum(ai.nutrition && ai.nutrition.salt, 1)
     },
     nutritionComment: ai.nutritionComment ? String(ai.nutritionComment) : '',
     ingredients: normalizeAiItems(ai.ingredients),
@@ -1851,7 +1860,7 @@ function populateFromAiDraft(ai){
     steps: (ai.steps || []).filter(function(s){ return s && s.text; }).map(function(s){
       return {
         text: String(s.text),
-        timeMinutes: parseNumOr0(s.timeMinutes),
+        timeMinutes: sanitizeNum(s.timeMinutes, 0),
         tip: s.tip ? String(s.tip) : '',
         icon: STEP_ICON_LABELS[s.icon] ? s.icon : 'stir'
       };
@@ -1961,9 +1970,10 @@ function collectAddForm(){
     document.querySelectorAll(selector).forEach(function(row){
       const nm = row.querySelector('.dr-name').value.trim();
       if(!nm) return;
+      const rawAmount = parseNumOrNull(row.querySelector('.dr-amount').value);
       out.push({
         name: nm,
-        amount: parseNumOrNull(row.querySelector('.dr-amount').value),
+        amount: rawAmount == null ? null : sanitizeNum(rawAmount, 3),
         unit: row.querySelector('.dr-unit').value.trim() || '適量'
       });
     });
@@ -1989,7 +1999,7 @@ function collectAddForm(){
     if(!tx) return;
     steps.push({
       text: tx,
-      timeMinutes: parseNumOr0(row.querySelector('.dr-time').value),
+      timeMinutes: sanitizeNum(row.querySelector('.dr-time').value, 0),
       tip: row.querySelector('.dr-tip').value.trim(),
       icon: row.querySelector('.dr-icon').value || 'stir'
     });
@@ -2022,13 +2032,13 @@ function collectAddForm(){
       excludeIngredients: addDraft.excludeTags.slice(),
       lowCalorie: document.getElementById('add-lowcal').checked
     },
-    cookTimeMinutes: parseNumOr0(document.getElementById('add-cooktime').value),
+    cookTimeMinutes: sanitizeNum(document.getElementById('add-cooktime').value, 0),
     nutrition: {
-      kcal: parseNumOr0(document.getElementById('add-kcal').value),
-      protein: parseNumOr0(document.getElementById('add-protein').value),
-      fat: parseNumOr0(document.getElementById('add-fat').value),
-      carb: parseNumOr0(document.getElementById('add-carb').value),
-      salt: parseNumOr0(document.getElementById('add-salt').value)
+      kcal: sanitizeNum(document.getElementById('add-kcal').value, 0),
+      protein: sanitizeNum(document.getElementById('add-protein').value, 1),
+      fat: sanitizeNum(document.getElementById('add-fat').value, 1),
+      carb: sanitizeNum(document.getElementById('add-carb').value, 1),
+      salt: sanitizeNum(document.getElementById('add-salt').value, 1)
     },
     nutritionComment: document.getElementById('add-nutrition-comment').value.trim() || 'バランスを意識した自作メニューです。',
     ingredients: ingredients,
