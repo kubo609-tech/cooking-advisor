@@ -168,7 +168,20 @@ textarea{width:100%; resize:vertical; line-height:1.6; min-height:60px;}
 .form-hint{font-size:0.82rem; color:var(--muted); background:var(--surface); border-left:3px solid var(--accent); padding:8px 10px; border-radius:4px; margin:8px 0 0;}
 .form-hint code{background:var(--chip-bg); padding:1px 5px; border-radius:4px;}
 .form-error{color:var(--danger); font-weight:bold; font-size:0.9rem; background:#FBEAE8; border:1px solid var(--danger); border-radius:8px; padding:10px 12px; margin-top:14px;}
-.svg-preview{background:#F3EEE1; border-radius:12px; padding:12px; display:flex; justify-content:center; margin-top:4px;}
+.svg-preview{background:#F3EEE1; border-radius:12px; padding:12px; display:flex; justify-content:center; margin-top:4px; min-height:60px;}
+.svg-preview .preview-photo{max-width:240px; max-height:220px; border-radius:10px; object-fit:cover;}
+.photo-search-row{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0;}
+.photo-search-row .text-input{flex:1 1 180px;}
+.photo-search-row .btn{flex:0 0 auto; min-height:44px; padding:12px 18px;}
+.photo-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px;}
+.photo-grid button{padding:0; margin:0; border:2px solid var(--border); border-radius:10px; overflow:hidden; cursor:pointer; background:none; aspect-ratio:1/1;}
+.photo-grid button.selected{border-color:var(--primary); box-shadow:0 0 0 2px var(--primary);}
+.photo-grid img{width:100%; height:100%; object-fit:cover; display:block;}
+.card-illust.has-photo{padding:0;}
+.card-illust .card-photo{width:100%; height:120px; object-fit:cover; display:block;}
+.detail-illust .detail-photo{max-width:300px; max-height:230px; border-radius:12px; object-fit:cover;}
+.photo-credit{font-size:0.72rem; color:var(--muted); margin:6px 0 0; text-align:center;}
+.photo-credit a{color:var(--muted);}
 .form-actions{margin-top:22px; display:flex; flex-direction:column; gap:10px;}
 .badge-user{background:var(--primary-dark); color:#fff;}
 .user-recipe-actions{display:flex; gap:10px; margin-top:12px;}
@@ -382,9 +395,21 @@ footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padd
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="add-dish-type">完成イメージのイラスト</label>
-        <select id="add-dish-type" class="select-input"></select>
-        <select id="add-dish-color" class="select-input"></select>
+        <label class="field-label">完成イメージ</label>
+        <div class="chip-group" id="image-mode-chips"></div>
+        <div id="illust-controls">
+          <select id="add-dish-type" class="select-input"></select>
+          <select id="add-dish-color" class="select-input"></select>
+        </div>
+        <div id="photo-controls" hidden>
+          <p class="form-hint">料理名と食材から検索ワードを自動で作ります。候補から1枚選んでください。写真は Openverse / Wikimedia Commons のクリエイティブ・コモンズ等の画像を検索します(オンライン時のみ)。表示・保存されるのは画像のURLで、作者・ライセンスも一緒に記録します。</p>
+          <div class="photo-search-row">
+            <input type="text" id="photo-query" class="text-input" placeholder="検索ワード(自動生成)" maxlength="80">
+            <button type="button" class="btn btn-primary" id="photo-search-btn">写真を検索</button>
+          </div>
+          <p class="ai-status" id="photo-status" hidden></p>
+          <div class="photo-grid" id="photo-results"></div>
+        </div>
         <div class="svg-preview" id="add-dish-preview"></div>
       </div>
 
@@ -434,6 +459,14 @@ const AI_MODELS = [
   {id:'claude-opus-5', label:'Claude Opus 5(高品質・高コスト)'},
   {id:'claude-sonnet-5', label:'Claude Sonnet 5(バランス)'},
   {id:'claude-haiku-4-5', label:'Claude Haiku 4.5(低コスト・高速)'}
+];
+
+// 完成イメージの写真検索(キー不要・CORS対応の公開API)
+const OPENVERSE_ENDPOINT = 'https://api.openverse.org/v1/images/';
+const COMMONS_ENDPOINT = 'https://commons.wikimedia.org/w/api.php';
+const IMAGE_MODES = [
+  {key:'illust', label:'イラスト'},
+  {key:'photo', label:'写真(ネット検索)'}
 ];
 
 // メニュー追加フォーム用の選択肢(レシピ自体のタグは「指定なし」を持たない)
@@ -1316,6 +1349,37 @@ function renderListScreen(results){
   container.appendChild(grid);
 }
 function mealLabel(k){ const m = MEALS.filter(function(x){return x.key===k;})[0]; return m ? m.label : k; }
+function hasRecipePhoto(r){
+  return !!(r && r.photo && r.photo.thumbnail);
+}
+function photoImgHTML(r, variant){
+  const p = r.photo;
+  const cls = variant === 'detail' ? 'detail-photo' : 'card-photo';
+  const size = variant === 'detail' ? 170 : 110;
+  return '<img class="'+cls+'" src="'+esc(p.thumbnail)+'" alt="'+esc(r.name)+'の写真" loading="lazy" ' +
+    'data-fbid="'+esc(r.id)+'" data-fbsize="'+size+'" onerror="photoFallback(this)">';
+}
+window.photoFallback = function(img){
+  img.onerror = null;
+  const id = img.getAttribute('data-fbid');
+  const size = parseInt(img.getAttribute('data-fbsize'), 10) || 130;
+  const r = RECIPES.filter(function(x){ return x.id === id; })[0];
+  if(r && r.finishedIllustration && img.parentNode){
+    img.parentNode.classList.remove('has-photo');
+    img.parentNode.innerHTML = dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, size);
+  }
+};
+function photoCreditHTML(p){
+  const who = p.creator ? esc(p.creator) : '作者不明';
+  const link = p.landingUrl
+    ? '<a href="'+esc(p.landingUrl)+'" target="_blank" rel="noopener noreferrer">'+who+'</a>'
+    : who;
+  const bits = [link];
+  if(p.license) bits.push(esc(p.license));
+  if(p.sourceName) bits.push('出典: ' + esc(p.sourceName));
+  return '<p class="photo-credit">写真 ' + bits.join(' / ') + '</p>';
+}
+
 function renderRecipeCard(r, origin){
   const div = document.createElement('div');
   div.className = 'recipe-card';
@@ -1324,8 +1388,11 @@ function renderRecipeCard(r, origin){
   badges += '<span class="badge">'+SPICE_LABEL[r.tags.spiceLevel]+'</span>';
   if(r.tags.timeLevel === 'quick') badges += '<span class="badge badge-accent">はじめの一品</span>';
   if(r.tags.lowCalorie) badges += '<span class="badge">低カロリー</span>';
+  const photo = hasRecipePhoto(r);
   div.innerHTML =
-    '<div class="card-illust">'+dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, 110)+'</div>' +
+    '<div class="card-illust'+(photo ? ' has-photo' : '')+'">' +
+      (photo ? photoImgHTML(r, 'card') : dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, 110)) +
+    '</div>' +
     '<div class="card-body">' +
       '<h3>'+esc(r.name)+'</h3>' +
       '<div class="badge-row">'+badges+'</div>' +
@@ -1428,7 +1495,12 @@ function renderDetail(r){
 
   let html = '';
   html += '<div class="detail-header">';
-  html += '<div class="detail-illust">'+dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, 170)+'</div>';
+  if(hasRecipePhoto(r)){
+    html += '<div class="detail-illust">'+photoImgHTML(r, 'detail')+'</div>';
+    html += photoCreditHTML(r.photo);
+  } else {
+    html += '<div class="detail-illust">'+dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, 170)+'</div>';
+  }
   html += '<h2>'+esc(r.name)+'</h2>';
   html += '<div class="badge-row">' +
     (isUserRecipe(r) ? '<span class="badge badge-user">自作</span>' : '') +
@@ -1615,11 +1687,173 @@ function matchColorPreset(colors){
   return hit ? hit.key : 'default';
 }
 function updateDishPreview(){
+  const wrap = document.getElementById('add-dish-preview');
+  if(addDraft && addDraft.imageMode === 'photo'){
+    if(addDraft.photo && addDraft.photo.thumbnail){
+      wrap.innerHTML = '<img class="preview-photo" src="'+esc(addDraft.photo.thumbnail)+'" alt="選択した写真">';
+    } else {
+      wrap.innerHTML = '<span style="color:var(--muted);font-size:0.85rem;">写真が未選択です。「写真を検索」から選んでください。</span>';
+    }
+    return;
+  }
   const type = document.getElementById('add-dish-type').value;
   const presetKey = document.getElementById('add-dish-color').value;
   const preset = DISH_COLOR_PRESETS.filter(function(p){ return p.key === presetKey; })[0];
   const colors = (preset && preset.colors) ? preset.colors : DISH_DEFAULT_COLORS[type];
-  document.getElementById('add-dish-preview').innerHTML = dishSVG(type, colors, 150);
+  wrap.innerHTML = dishSVG(type, colors, 150);
+}
+
+/* ---- 完成イメージの写真検索 ---- */
+function showPhotoStatus(msg, kind){
+  const el = document.getElementById('photo-status');
+  el.textContent = msg;
+  el.className = 'ai-status' + (kind ? ' ' + kind : '');
+  el.hidden = false;
+}
+function stripHtml(s){
+  return String(s == null ? '' : s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+}
+function buildPhotoQuery(){
+  const name = document.getElementById('add-name').value.trim();
+  const ing = [];
+  document.querySelectorAll('#add-ingredient-rows .dr-name').forEach(function(el){
+    const v = el.value.trim();
+    if(v && ing.length < 3) ing.push(v);
+  });
+  const parts = [];
+  if(name) parts.push(name);
+  else if(addDraft && CUISINE_LABEL[addDraft.cuisine]) parts.push(CUISINE_LABEL[addDraft.cuisine] + '料理');
+  parts.push.apply(parts, ing);
+  if(!name && !ing.length) parts.push('料理');
+  return parts.join(' ').slice(0, 80);
+}
+function normalizePhotoItem(raw, source){
+  if(source === 'commons'){
+    const ii = (raw.imageinfo && raw.imageinfo[0]) || {};
+    const em = ii.extmetadata || {};
+    return {
+      id: 'commons-' + raw.pageid,
+      thumbnail: ii.thumburl || ii.url || '',
+      url: ii.url || '',
+      creator: stripHtml(em.Artist && em.Artist.value) || '',
+      license: stripHtml(em.LicenseShortName && em.LicenseShortName.value) || '',
+      sourceName: 'Wikimedia Commons',
+      landingUrl: ii.descriptionurl || ''
+    };
+  }
+  return {
+    id: String(raw.id || ''),
+    thumbnail: raw.thumbnail || raw.url || '',
+    url: raw.url || raw.thumbnail || '',
+    creator: raw.creator || '',
+    license: ((raw.license || '') + (raw.license_version ? ' ' + raw.license_version : '')).toUpperCase().trim(),
+    sourceName: raw.source || raw.provider || 'Openverse',
+    landingUrl: raw.foreign_landing_url || raw.url || ''
+  };
+}
+async function fetchOpenverse(query){
+  const url = OPENVERSE_ENDPOINT + '?q=' + encodeURIComponent(query) +
+    '&license_type=all-cc&page_size=12&mature=false';
+  const resp = await fetch(url, {headers:{'Accept':'application/json'}});
+  if(resp.status === 429) throw {soft:'検索回数の上限に達しました。時間をおいて再度お試しください。'};
+  if(!resp.ok) throw {soft:'Openverse 検索エラー(' + resp.status + ')'};
+  const data = await resp.json();
+  return (data.results || []).map(function(r){ return normalizePhotoItem(r, 'openverse'); });
+}
+async function fetchCommons(query){
+  const url = COMMONS_ENDPOINT + '?origin=*&format=json&action=query&generator=search' +
+    '&gsrsearch=' + encodeURIComponent('filetype:bitmap ' + query) +
+    '&gsrnamespace=6&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=400';
+  const resp = await fetch(url);
+  if(!resp.ok) throw {soft:'Wikimedia 検索エラー(' + resp.status + ')'};
+  const data = await resp.json();
+  const pages = (data.query && data.query.pages) ? Object.keys(data.query.pages).map(function(k){ return data.query.pages[k]; }) : [];
+  return pages.map(function(p){ return normalizePhotoItem(p, 'commons'); });
+}
+async function searchPhotos(query){
+  let items = [];
+  let firstErr = '';
+  try{ items = await fetchOpenverse(query); }
+  catch(e){ firstErr = (e && e.soft) ? e.soft : ''; }
+  if(!items.length){
+    try{ const c = await fetchCommons(query); if(c.length) items = c; }
+    catch(e){ if(!firstErr) firstErr = (e && e.soft) ? e.soft : ''; }
+  }
+  items = items.filter(function(p){ return p.thumbnail; });
+  if(!items.length){
+    return {ok:false, error: firstErr || '該当する写真が見つかりませんでした。検索ワードを変えてお試しください。'};
+  }
+  return {ok:true, items:items};
+}
+function renderPhotoResults(items){
+  const box = document.getElementById('photo-results');
+  box.innerHTML = '';
+  items.forEach(function(p){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    if(addDraft.photo && addDraft.photo.id === p.id) btn.className = 'selected';
+    btn.innerHTML = '<img src="'+esc(p.thumbnail)+'" alt="" loading="lazy">';
+    btn.title = (p.creator ? p.creator + ' / ' : '') + (p.license || '') + ' / ' + p.sourceName;
+    btn.addEventListener('click', function(){
+      addDraft.photo = p;
+      renderPhotoResults(items);
+      updateDishPreview();
+      showPhotoStatus('この写真を使います。登録すると完成イメージとして保存されます。', 'ok');
+    });
+    box.appendChild(btn);
+  });
+}
+async function onPhotoSearchClick(){
+  const input = document.getElementById('photo-query');
+  let q = input.value.trim();
+  if(!q){ q = buildPhotoQuery(); input.value = q; }
+  if(!q){ showPhotoStatus('検索ワードを入力してください。', 'error'); return; }
+  const btn = document.getElementById('photo-search-btn');
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '検索中…';
+  showPhotoStatus('写真を検索しています…', 'busy');
+  try{
+    const res = await searchPhotos(q);
+    if(!res.ok){
+      showPhotoStatus(res.error, 'error');
+      document.getElementById('photo-results').innerHTML = '';
+    } else {
+      renderPhotoResults(res.items);
+      showPhotoStatus(res.items.length + '件見つかりました。使いたい写真をタップしてください。', '');
+    }
+  }catch(err){
+    showPhotoStatus('検索に失敗しました。オフラインでないか確認してください。', 'error');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = old;
+  }
+}
+function setupImagePanel(){
+  renderAddChipGroup('image-mode-chips', IMAGE_MODES,
+    function(k){ return addDraft.imageMode === k; },
+    function(k){
+      addDraft.imageMode = k;
+      applyImageMode();
+    });
+  applyImageMode();
+  document.getElementById('photo-search-btn').onclick = onPhotoSearchClick;
+}
+function applyImageMode(){
+  const isPhoto = addDraft.imageMode === 'photo';
+  document.getElementById('illust-controls').hidden = isPhoto;
+  document.getElementById('photo-controls').hidden = !isPhoto;
+  const box = document.getElementById('photo-results');
+  const status = document.getElementById('photo-status');
+  if(isPhoto){
+    const qi = document.getElementById('photo-query');
+    if(!qi.value.trim()) qi.value = buildPhotoQuery();
+    if(addDraft.photo && !box.childElementCount) renderPhotoResults([addDraft.photo]);
+  } else {
+    box.innerHTML = '';
+    status.hidden = true;
+  }
+  updateDishPreview();
 }
 
 /* ---- AIレシピ下書き生成 ---- */
@@ -1744,7 +1978,8 @@ function buildRecipeTool(glossaryKeys){
           icon:{type:'string', enum:Object.keys(STEP_ICON_LABELS)}
         }, required:['text','timeMinutes','icon']}},
         dishType:{type:'string', enum:DISH_TYPES.map(function(d){ return d.key; }), description:'完成イメージのイラスト種別'},
-        colorPreset:{type:'string', enum:['default','warm','green','brown']}
+        colorPreset:{type:'string', enum:['default','warm','green','brown']},
+        photoQuery:{type:'string', description:'完成した料理の写真をネット検索するための短いキーワード。料理名+主な食材+盛り付けの雰囲気を、日本語または英語で。例: "beef and potato simmered stew on a plate"'}
       },
       required:['name','cuisine','mealTypes','baseServings','cookTimeMinutes','spiceLevel','timeLevel','lowCalorie','nutrition','nutritionComment','ingredients','seasonings','tools','steps','dishType','colorPreset']
     }
@@ -1769,7 +2004,8 @@ async function generateRecipeDraft(dishName){
     'steps は初心者が迷わないよう1手順ずつ具体的に書き、各 text 内で次の用語を使うときだけ二重波かっこで囲みます(例: {{中火}}): ' +
     glossaryKeys.join('、') + '。これ以外の語は囲まないでください。' +
     'icon は各手順の作業内容に最も近いものを列挙値から選びます。' +
-    'nutrition は1人分あたりの推定値(目安)で構いません。';
+    'nutrition は1人分あたりの推定値(目安)で構いません。' +
+    'photoQuery には、完成した料理の写真をネットで探すための短い検索キーワード(料理名+主な食材+盛り付けの雰囲気)を入れます。';
   const userMsg =
     '「' + dishName + '」のレシピを作ってください。' +
     (hints.length ? '(想定: ' + hints.join(' / ') + ')' : '') +
@@ -1865,7 +2101,9 @@ function populateFromAiDraft(ai){
         icon: STEP_ICON_LABELS[s.icon] ? s.icon : 'stir'
       };
     }),
-    finishedIllustration:{ type: dishType, colors: colors }
+    finishedIllustration:{ type: dishType, colors: colors },
+    photo: null,
+    photoQuery: ai.photoQuery ? String(ai.photoQuery).slice(0, 80) : ''
   };
   if(!prefill.ingredients.length) prefill.ingredients = [{name:'', amount:null, unit:''}];
   if(!prefill.steps.length) prefill.steps = [{text:'', timeMinutes:0, tip:'', icon:'stir'}];
@@ -1887,7 +2125,10 @@ function renderAddForm(prefill, isEdit){
     baseServings: prefill ? prefill.baseServings : 2,
     spiceLevel: prefill ? prefill.tags.spiceLevel : 'mild',
     timeLevel: prefill ? prefill.tags.timeLevel : 'standard',
-    excludeTags: prefill ? (prefill.tags.excludeIngredients || []).slice() : []
+    excludeTags: prefill ? (prefill.tags.excludeIngredients || []).slice() : [],
+    imageMode: (prefill && prefill.photo && prefill.photo.thumbnail) ? 'photo' : 'illust',
+    photo: (prefill && prefill.photo && prefill.photo.thumbnail) ? Object.assign({}, prefill.photo) : null,
+    photoQuery: (prefill && prefill.photoQuery) ? prefill.photoQuery : ''
   };
 
   document.getElementById('add-form-title').textContent = isEdit ? 'メニューを編集する' : 'メニューを追加する';
@@ -1935,7 +2176,11 @@ function renderAddForm(prefill, isEdit){
   }
   typeSel.onchange = updateDishPreview;
   colorSel.onchange = updateDishPreview;
-  updateDishPreview();
+
+  document.getElementById('photo-status').hidden = true;
+  document.getElementById('photo-results').innerHTML = '';
+  document.getElementById('photo-query').value = addDraft.photoQuery || '';
+  setupImagePanel();
 
   document.getElementById('glossary-terms').textContent = Object.keys(GLOSSARY_COMMON).join(' / ');
 
@@ -2048,6 +2293,16 @@ function collectAddForm(){
     glossary: glossary,
     steps: steps,
     finishedIllustration: {type: dishType, colors: colors},
+    photo: (addDraft.imageMode === 'photo' && addDraft.photo && addDraft.photo.thumbnail) ? {
+      id: addDraft.photo.id || '',
+      thumbnail: addDraft.photo.thumbnail,
+      url: addDraft.photo.url || addDraft.photo.thumbnail,
+      creator: addDraft.photo.creator || '',
+      license: addDraft.photo.license || '',
+      sourceName: addDraft.photo.sourceName || '',
+      landingUrl: addDraft.photo.landingUrl || ''
+    } : null,
+    photoQuery: document.getElementById('photo-query').value.trim() || (addDraft.photoQuery || ''),
     userAdded: true
   };
   return {ok:true, recipe:recipe};
