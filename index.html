@@ -128,6 +128,56 @@ details.filter-details .field-group:first-of-type{margin-top:14px;}
   padding:8px 10px; border-radius:8px; z-index:20; box-shadow:0 4px 12px rgba(0,0,0,0.2);
 }
 .term.open .term-tip, .term:hover .term-tip, .term:focus .term-tip{display:block;}
+
+/* --- メニュー追加フォーム --- */
+.text-input, textarea, .num-input, .select-input,
+.nutrition-inputs input,
+.dyn-row input, .dyn-row select,
+.dyn-row-step textarea, .dyn-row-step input, .dyn-row-step select{
+  font-family:inherit; font-size:0.95rem; color:var(--text);
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; min-height:44px;
+}
+.text-input{width:100%;}
+textarea{width:100%; resize:vertical; line-height:1.6; min-height:60px;}
+.num-input{width:130px;}
+.select-input{width:100%; margin-bottom:8px;}
+.nutrition-inputs{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+.nutrition-inputs label{display:flex; flex-direction:column; gap:4px; font-size:0.8rem; color:var(--muted);}
+.nutrition-inputs input{width:100%;}
+.req{font-size:0.68rem; background:var(--accent); color:#fff; border-radius:8px; padding:2px 7px; margin-left:6px; vertical-align:middle; font-weight:normal;}
+.mini-btn{
+  background:var(--surface); color:var(--primary); border:1.5px dashed var(--primary);
+  border-radius:8px; padding:9px 14px; font-size:0.88rem; cursor:pointer; min-height:42px; margin-top:6px;
+}
+.mini-btn:hover{background:var(--chip-bg);}
+.dyn-row{display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; margin-bottom:10px;}
+.dyn-row .dr-name{flex:1 1 140px;}
+.dyn-row .dr-amount{width:100px;}
+.dyn-row .dr-unit{width:150px;}
+.dyn-row .dr-note{flex:1 1 100%;}
+.dyn-row-step{display:flex; flex-direction:column; gap:8px; border:1px solid var(--border); border-radius:10px; padding:12px; background:var(--bg); margin-bottom:12px;}
+.dyn-row-step .inline{display:flex; gap:8px;}
+.dyn-row-step .dr-time{width:110px;}
+.dyn-row-step .dr-icon{flex:1;}
+.remove-row{
+  background:none; border:1px solid var(--border); color:var(--muted); border-radius:8px;
+  padding:8px 12px; cursor:pointer; font-size:0.82rem; min-height:40px; align-self:flex-start;
+}
+.remove-row:hover{border-color:var(--danger); color:var(--danger);}
+.form-hint{font-size:0.82rem; color:var(--muted); background:var(--surface); border-left:3px solid var(--accent); padding:8px 10px; border-radius:4px; margin:8px 0 0;}
+.form-hint code{background:var(--chip-bg); padding:1px 5px; border-radius:4px;}
+.form-error{color:var(--danger); font-weight:bold; font-size:0.9rem; background:#FBEAE8; border:1px solid var(--danger); border-radius:8px; padding:10px 12px; margin-top:14px;}
+.svg-preview{background:#F3EEE1; border-radius:12px; padding:12px; display:flex; justify-content:center; margin-top:4px;}
+.form-actions{margin-top:22px; display:flex; flex-direction:column; gap:10px;}
+.badge-user{background:var(--primary-dark); color:#fff;}
+.user-recipe-actions{display:flex; gap:10px; margin-top:12px;}
+.user-recipe-actions button{
+  background:var(--surface); border:1.5px solid var(--primary); color:var(--primary);
+  border-radius:8px; padding:9px 16px; font-size:0.88rem; cursor:pointer; min-height:42px;
+}
+.user-recipe-actions button.danger{border-color:var(--danger); color:var(--danger);}
+
 footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padding:20px; }
 @media (max-width:600px){
   .recipe-grid{grid-template-columns:1fr 1fr;}
@@ -151,6 +201,7 @@ footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padd
       <p>はじめての一人暮らしでも、本格料理が身につく</p>
     </div>
     <div class="header-actions">
+      <button type="button" class="home-btn" id="add-btn" onclick="openAddForm()">メニュー追加</button>
       <button type="button" class="home-btn" id="allmenu-btn" onclick="openAllMenu()">メニュー一覧</button>
       <button type="button" class="home-btn" id="home-btn" onclick="showScreen('screen-top')" hidden>トップへ</button>
     </div>
@@ -198,6 +249,7 @@ footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padd
       <button type="submit" class="btn btn-primary btn-block">この条件でメニューを探す</button>
     </form>
     <button type="button" class="btn btn-secondary btn-block browse-all-btn" onclick="openAllMenu()">登録されているメニューを一覧で見る</button>
+    <button type="button" class="btn btn-secondary btn-block browse-all-btn" onclick="openAddForm()">自分のレシピを追加する</button>
   </section>
 
   <section id="screen-list" class="screen">
@@ -213,6 +265,104 @@ footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padd
       <p class="lead" id="all-menu-count"></p>
     </div>
     <div id="all-menu-results"></div>
+  </section>
+
+  <section id="screen-add" class="screen">
+    <button type="button" class="btn-back" onclick="showScreen('screen-top')">← トップに戻る</button>
+    <div class="hero">
+      <h2 id="add-form-title">メニューを追加する</h2>
+      <p class="lead">あなたのレシピを登録すると、条件検索やメニュー一覧に表示されます。内容はこの端末にのみ保存されます。</p>
+    </div>
+    <form id="add-form">
+      <div class="field-group">
+        <label class="field-label" for="add-name">料理名 <span class="req">必須</span></label>
+        <input type="text" id="add-name" class="text-input" placeholder="例: 肉じゃが" maxlength="40">
+      </div>
+      <div class="field-group">
+        <label class="field-label">国・料理ジャンル</label>
+        <div class="chip-group" id="add-cuisine-chips"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">食事区分(複数選択可) <span class="req">1つ以上</span></label>
+        <div class="chip-group" id="add-meal-chips"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">基準人数(入力する分量が何人分か)</label>
+        <div class="chip-group" id="add-baseservings-chips"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="add-cooktime">調理時間の目安(分)</label>
+        <input type="number" id="add-cooktime" class="num-input" min="1" max="600" placeholder="30">
+      </div>
+      <div class="field-group">
+        <label class="field-label">辛さ</label>
+        <div class="chip-group" id="add-spice-chips"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">調理時間レベル(絞り込み検索に使われます)</label>
+        <div class="chip-group" id="add-timelevel-chips"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">この料理に含まれる食材タグ(苦手食材の除外検索に使われます)</label>
+        <div class="chip-group" id="add-exclude-chips"></div>
+      </div>
+      <div class="field-group">
+        <label class="checkbox-line"><input type="checkbox" id="add-lowcal">カロリー控えめのメニューとして扱う</label>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">栄養情報(1人分あたり)</label>
+        <div class="nutrition-inputs">
+          <label>エネルギー(kcal)<input type="number" id="add-kcal" min="0" max="3000" placeholder="400"></label>
+          <label>たんぱく質(g)<input type="number" id="add-protein" min="0" max="300" placeholder="20"></label>
+          <label>脂質(g)<input type="number" id="add-fat" min="0" max="300" placeholder="15"></label>
+          <label>炭水化物(g)<input type="number" id="add-carb" min="0" max="500" placeholder="40"></label>
+          <label>塩分相当量(g)<input type="number" id="add-salt" min="0" max="30" step="0.1" placeholder="2.0"></label>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="add-nutrition-comment">栄養についてのひとことコメント</label>
+        <textarea id="add-nutrition-comment" rows="2" placeholder="例: 肉と野菜でたんぱく質と食物繊維がしっかり摂れます。"></textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">食材 <span class="req">1つ以上</span></label>
+        <div id="add-ingredient-rows"></div>
+        <button type="button" class="mini-btn" onclick="addDynRow('ingredient')">＋ 食材を追加</button>
+      </div>
+      <div class="field-group">
+        <label class="field-label">調味料</label>
+        <div id="add-seasoning-rows"></div>
+        <button type="button" class="mini-btn" onclick="addDynRow('seasoning')">＋ 調味料を追加</button>
+        <p class="form-hint">分量は数値と単位に分けて入力します。「少々」「適量」など数値で表せないものは、数値を空にして単位欄に「少々」などと入力してください(人数を変えても増減しません)。</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">調理器具</label>
+        <div id="add-tool-rows"></div>
+        <button type="button" class="mini-btn" onclick="addDynRow('tool')">＋ 調理器具を追加</button>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">作り方の手順 <span class="req">1つ以上</span></label>
+        <div id="add-step-rows"></div>
+        <button type="button" class="mini-btn" onclick="addDynRow('step')">＋ 手順を追加</button>
+        <p class="form-hint">専門用語を <code>{{中火}}</code> のように二重の波かっこで囲むと、注釈つきで表示されます。<br>使える用語: <span id="glossary-terms"></span></p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="add-dish-type">完成イメージのイラスト</label>
+        <select id="add-dish-type" class="select-input"></select>
+        <select id="add-dish-color" class="select-input"></select>
+        <div class="svg-preview" id="add-dish-preview"></div>
+      </div>
+
+      <p class="form-error" id="add-form-error" hidden></p>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-block" id="add-submit-btn">この内容で登録する</button>
+        <button type="button" class="btn btn-secondary btn-block" id="add-delete-btn" hidden onclick="deleteEditingRecipe()">このレシピを削除する</button>
+      </div>
+    </form>
   </section>
 
   <section id="screen-detail" class="screen">
@@ -243,6 +393,55 @@ const TIME_LEVELS = [
   {key:'any', label:'指定なし'}, {key:'quick', label:'時短(〜25分)'}, {key:'standard', label:'標準(26〜40分)'}, {key:'slow', label:'じっくり(40分〜)'}
 ];
 const EXCLUDABLE_TAGS = ['パクチー','魚介','きのこ','乳製品'];
+
+// メニュー追加フォーム用の選択肢(レシピ自体のタグは「指定なし」を持たない)
+const RECIPE_SPICE_OPTIONS = [
+  {key:'mild', label:'控えめ'}, {key:'medium', label:'普通'}, {key:'hot', label:'しっかり'}
+];
+const RECIPE_TIME_OPTIONS = [
+  {key:'quick', label:'時短(〜25分)'}, {key:'standard', label:'標準(26〜40分)'}, {key:'slow', label:'じっくり(40分〜)'}
+];
+const STEP_ICON_LABELS = {
+  cut:'切る', stir:'混ぜる・炒める', fry:'焼く・揚げる', boil:'ゆでる・沸かす', simmer:'煮る',
+  mix:'和える', marinate:'漬ける・下味', season:'味つけ', rest:'休ませる・置く', plate:'盛り付け'
+};
+const DISH_TYPES = [
+  {key:'plate-main', label:'メイン料理(皿盛り)'},
+  {key:'rice-plate', label:'ご飯もの・丼'},
+  {key:'soup-bowl', label:'スープ・汁物'},
+  {key:'pasta-plate', label:'パスタ'},
+  {key:'omelette-plate', label:'卵料理'},
+  {key:'pot-stew', label:'鍋・煮込み'}
+];
+const DISH_DEFAULT_COLORS = {
+  'plate-main':['#C99A6B','#8FBF6B','#F2C14E'],
+  'rice-plate':['#D9773D','#6FAF5A'],
+  'soup-bowl':['#D9633D','#E88C8C','#6FAF5A'],
+  'pasta-plate':['#C0392B','#6FAF5A'],
+  'omelette-plate':['#F2C14E','#D9573B'],
+  'pot-stew':['#C68B4B','#E3A15B','#8FBF6B','#B5713F']
+};
+const DISH_COLOR_PRESETS = [
+  {key:'default', label:'標準の彩り', colors:null},
+  {key:'warm', label:'暖色系(トマト・肉)', colors:['#D9773D','#E88C8C','#F2C14E','#B5713F']},
+  {key:'green', label:'緑系(野菜)', colors:['#6FAF5A','#8FBF6B','#5C7A5E','#A7C97F']},
+  {key:'brown', label:'茶系(煮物・揚げ物)', colors:['#C68B4B','#B5713F','#8A6240','#E3A15B']}
+];
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function parseNumOrNull(v){
+  const s = String(v == null ? '' : v).trim();
+  if(s === '') return null;
+  const n = Number(s);
+  return isNaN(n) ? null : n;
+}
+function parseNumOr0(v){
+  const n = parseNumOrNull(v);
+  return n == null ? 0 : n;
+}
 
 const CUISINE_LABEL = {}; CUISINES.forEach(c => CUISINE_LABEL[c.key] = c.label);
 const SPICE_LABEL = {}; SPICE_LEVELS.forEach(s => SPICE_LABEL[s.key] = s.label);
@@ -948,6 +1147,34 @@ function getChecks(recipeId, section, length){
   return appState.checks[recipeId][section];
 }
 
+/* =========================================================
+   ユーザー追加レシピ (localStorage)
+   ========================================================= */
+const USER_STORAGE_KEY = 'cookingAppUserRecipes_v1';
+let USER_RECIPES = [];
+function loadUserRecipes(){
+  try{
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    if(raw){
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr)) return arr;
+    }
+  }catch(e){}
+  return [];
+}
+function saveUserRecipes(){
+  try{ localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(USER_RECIPES)); }catch(e){}
+}
+function isUserRecipe(r){
+  return !!(r && (r.userAdded || (typeof r.id === 'string' && r.id.indexOf('user-') === 0)));
+}
+function syncUserRecipesIntoMain(){
+  for(var i = RECIPES.length - 1; i >= 0; i--){
+    if(isUserRecipe(RECIPES[i])) RECIPES.splice(i, 1);
+  }
+  USER_RECIPES.forEach(function(r){ RECIPES.push(r); });
+}
+
 let condition = Object.assign({
   cuisine:'japan', meal:'dinner', servings:2, spiceLevel:'any', timeLevel:'any',
   excludeTags:[], lowCalorieOnly:false
@@ -1043,13 +1270,15 @@ function mealLabel(k){ const m = MEALS.filter(function(x){return x.key===k;})[0]
 function renderRecipeCard(r, origin){
   const div = document.createElement('div');
   div.className = 'recipe-card';
-  let badges = '<span class="badge">'+SPICE_LABEL[r.tags.spiceLevel]+'</span>';
+  let badges = '';
+  if(isUserRecipe(r)) badges += '<span class="badge badge-user">自作</span>';
+  badges += '<span class="badge">'+SPICE_LABEL[r.tags.spiceLevel]+'</span>';
   if(r.tags.timeLevel === 'quick') badges += '<span class="badge badge-accent">はじめの一品</span>';
   if(r.tags.lowCalorie) badges += '<span class="badge">低カロリー</span>';
   div.innerHTML =
     '<div class="card-illust">'+dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, 110)+'</div>' +
     '<div class="card-body">' +
-      '<h3>'+r.name+'</h3>' +
+      '<h3>'+esc(r.name)+'</h3>' +
       '<div class="badge-row">'+badges+'</div>' +
       '<p class="card-meta">'+r.nutrition.kcal+'kcal(1人分)・調理目安'+r.cookTimeMinutes+'分</p>' +
     '</div>';
@@ -1068,6 +1297,13 @@ function renderAllMenuScreen(){
   document.getElementById('all-menu-count').textContent = '全'+RECIPES.length+'品を国・料理ジャンル別に掲載しています。';
   const container = document.getElementById('all-menu-results');
   container.innerHTML = '';
+  const addBar = document.createElement('button');
+  addBar.type = 'button';
+  addBar.className = 'btn btn-secondary btn-block';
+  addBar.style.marginBottom = '18px';
+  addBar.textContent = '＋ 自分のレシピを追加する';
+  addBar.addEventListener('click', function(){ openAddForm(); });
+  container.appendChild(addBar);
   CUISINES.forEach(function(c){
     const recipesOfCuisine = RECIPES.filter(function(r){ return r.cuisine === c.key; });
     if(recipesOfCuisine.length === 0) return;
@@ -1095,9 +1331,9 @@ function recipeGlossary(r){
   return g;
 }
 function renderStepText(text, glossary){
-  return text.replace(/\{\{(.+?)\}\}/g, function(m, term){
+  return esc(text).replace(/\{\{(.+?)\}\}/g, function(m, term){
     const def = glossary[term] || '';
-    return '<span class="term" tabindex="0">'+term+'<span class="term-tip">'+def+'</span></span>';
+    return '<span class="term" tabindex="0">'+esc(term)+'<span class="term-tip">'+esc(def)+'</span></span>';
   });
 }
 function formatFraction(v){
@@ -1144,12 +1380,19 @@ function renderDetail(r){
   let html = '';
   html += '<div class="detail-header">';
   html += '<div class="detail-illust">'+dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, 170)+'</div>';
-  html += '<h2>'+r.name+'</h2>';
+  html += '<h2>'+esc(r.name)+'</h2>';
   html += '<div class="badge-row">' +
+    (isUserRecipe(r) ? '<span class="badge badge-user">自作</span>' : '') +
     '<span class="badge">'+CUISINE_LABEL[r.cuisine]+'</span>' +
     '<span class="badge">'+SPICE_LABEL[r.tags.spiceLevel]+'</span>' +
     '<span class="badge">調理目安'+r.cookTimeMinutes+'分</span></div>';
   html += '<div class="servings-control" id="servings-control"></div>';
+  if(isUserRecipe(r)){
+    html += '<div class="user-recipe-actions">' +
+      '<button type="button" id="detail-edit-btn">&#9998; 編集する</button>' +
+      '<button type="button" class="danger" id="detail-delete-btn">&#128465; 削除する</button>' +
+    '</div>';
+  }
   html += '</div>';
 
   html += '<div class="section-card"><h3>栄養バランス(1人分あたり)</h3>';
@@ -1160,14 +1403,14 @@ function renderDetail(r){
     '<div class="item"><div class="value">'+r.nutrition.carb+'g</div><div class="label">炭水化物</div></div>' +
     '<div class="item"><div class="value">'+r.nutrition.salt+'g</div><div class="label">塩分相当量</div></div>' +
   '</div>';
-  html += '<p class="nutrition-comment">'+r.nutritionComment+'</p></div>';
+  html += '<p class="nutrition-comment">'+esc(r.nutritionComment)+'</p></div>';
 
   html += '<div class="section-card"><h3>食材</h3><ul class="check-list" id="ingredient-list"></ul></div>';
   html += '<div class="section-card"><h3>調味料</h3><ul class="check-list" id="seasoning-list"></ul></div>';
 
   html += '<div class="section-card"><h3>調理器具</h3><ul class="tool-list">';
   r.tools.forEach(function(t){
-    html += '<li>'+t + (r.toolNotes && r.toolNotes[t] ? '<span class="tool-note">'+r.toolNotes[t]+'</span>' : '') + '</li>';
+    html += '<li>'+esc(t) + (r.toolNotes && r.toolNotes[t] ? '<span class="tool-note">'+esc(r.toolNotes[t])+'</span>' : '') + '</li>';
   });
   html += '</ul></div>';
 
@@ -1184,6 +1427,13 @@ function renderDetail(r){
   renderSteps(r, glossary);
 
   bindTermTooltips();
+
+  if(isUserRecipe(r)){
+    const editBtn = document.getElementById('detail-edit-btn');
+    const delBtn = document.getElementById('detail-delete-btn');
+    if(editBtn) editBtn.addEventListener('click', function(){ openAddForm(r.id); });
+    if(delBtn) delBtn.addEventListener('click', function(){ removeUserRecipe(r.id); });
+  }
 }
 function renderIngredientChecklist(containerId, r, section){
   const list = document.getElementById(containerId);
@@ -1194,7 +1444,7 @@ function renderIngredientChecklist(containerId, r, section){
     const li = document.createElement('li');
     if(checks[idx]) li.classList.add('checked');
     const display = scaleDisplay(item.amount, item.unit, r.baseServings, detailServings);
-    li.innerHTML = '<input type="checkbox" '+(checks[idx] ? 'checked' : '')+'><span class="item-text">'+item.name+' <strong>'+display+'</strong></span>';
+    li.innerHTML = '<input type="checkbox" '+(checks[idx] ? 'checked' : '')+'><span class="item-text">'+esc(item.name)+' <strong>'+esc(display)+'</strong></span>';
     li.querySelector('input').addEventListener('change', function(e){
       checks[idx] = e.target.checked;
       li.classList.toggle('checked', e.target.checked);
@@ -1214,7 +1464,7 @@ function renderSteps(r, glossary){
     inner += '<div class="step-body">';
     inner += '<div class="step-meta-row"><span class="step-num">STEP '+(idx+1)+'</span><span class="step-time">目安 '+step.timeMinutes+'分</span></div>';
     inner += '<p class="step-text">'+renderStepText(step.text, glossary)+'</p>';
-    if(step.tip) inner += '<p class="step-tip">コツ: '+step.tip+'</p>';
+    if(step.tip) inner += '<p class="step-tip">コツ: '+esc(step.tip)+'</p>';
     inner += '</div>';
     inner += '<div class="step-check"><input type="checkbox" '+(checks[idx] ? 'checked' : '')+'></div>';
     li.innerHTML = inner;
@@ -1247,6 +1497,296 @@ function bindTermTooltips(){
 }
 
 /* =========================================================
+   メニュー追加・編集フォーム
+   ========================================================= */
+let addDraft = null;
+let editingRecipeId = null;
+
+function renderAddChipGroup(containerId, options, isSelected, onToggle){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  options.forEach(function(opt){
+    const key = (typeof opt === 'object') ? opt.key : opt;
+    const label = (typeof opt === 'object') ? opt.label : (key + '名');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chip' + (isSelected(key) ? ' selected' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', function(){
+      onToggle(key);
+      renderAddChipGroup(containerId, options, isSelected, onToggle);
+    });
+    el.appendChild(btn);
+  });
+}
+
+function addDynRow(kind, data){
+  data = data || {};
+  const mount = {
+    ingredient:'add-ingredient-rows', seasoning:'add-seasoning-rows',
+    tool:'add-tool-rows', step:'add-step-rows'
+  };
+  const container = document.getElementById(mount[kind]);
+  if(!container) return;
+  const row = document.createElement('div');
+  if(kind === 'step'){
+    row.className = 'dyn-row-step';
+    const iconOpts = Object.keys(STEP_ICON_LABELS).map(function(k){
+      return '<option value="'+k+'"'+(data.icon === k ? ' selected' : '')+'>'+STEP_ICON_LABELS[k]+'</option>';
+    }).join('');
+    row.innerHTML =
+      '<textarea class="dr-text" rows="2" placeholder="操作内容(例: 玉ねぎを{{中火}}で炒める)">'+esc(data.text || '')+'</textarea>' +
+      '<div class="inline">' +
+        '<input type="number" class="dr-time" min="0" max="600" placeholder="目安分" value="'+(data.timeMinutes != null ? esc(data.timeMinutes) : '')+'">' +
+        '<select class="dr-icon">'+iconOpts+'</select>' +
+      '</div>' +
+      '<input type="text" class="dr-tip" placeholder="コツ・注意点(任意)" value="'+esc(data.tip || '')+'">' +
+      '<button type="button" class="remove-row">この手順を削除</button>';
+  } else if(kind === 'tool'){
+    row.className = 'dyn-row';
+    row.innerHTML =
+      '<input type="text" class="dr-name" placeholder="器具名(例: フライパン)" value="'+esc(data.name || '')+'">' +
+      '<input type="text" class="dr-note" placeholder="代用メモ(任意)" value="'+esc(data.note || '')+'">' +
+      '<button type="button" class="remove-row">×</button>';
+  } else {
+    row.className = 'dyn-row';
+    row.innerHTML =
+      '<input type="text" class="dr-name" placeholder="名前" value="'+esc(data.name || '')+'">' +
+      '<input type="number" class="dr-amount" min="0" step="0.1" placeholder="数値" value="'+(data.amount != null ? esc(data.amount) : '')+'">' +
+      '<input type="text" class="dr-unit" placeholder="単位(g/ml/個/少々 等)" value="'+esc(data.unit || '')+'">' +
+      '<button type="button" class="remove-row">×</button>';
+  }
+  row.querySelector('.remove-row').addEventListener('click', function(){ row.remove(); });
+  container.appendChild(row);
+}
+
+function matchColorPreset(colors){
+  const j = JSON.stringify(colors || []);
+  const hit = DISH_COLOR_PRESETS.filter(function(p){ return p.colors && JSON.stringify(p.colors) === j; })[0];
+  return hit ? hit.key : 'default';
+}
+function updateDishPreview(){
+  const type = document.getElementById('add-dish-type').value;
+  const presetKey = document.getElementById('add-dish-color').value;
+  const preset = DISH_COLOR_PRESETS.filter(function(p){ return p.key === presetKey; })[0];
+  const colors = (preset && preset.colors) ? preset.colors : DISH_DEFAULT_COLORS[type];
+  document.getElementById('add-dish-preview').innerHTML = dishSVG(type, colors, 150);
+}
+
+function openAddForm(id){
+  const prefill = id ? RECIPES.filter(function(x){ return x.id === id; })[0] : null;
+  renderAddForm(prefill || null);
+  showScreen('screen-add');
+}
+
+function renderAddForm(prefill){
+  editingRecipeId = prefill ? prefill.id : null;
+  addDraft = {
+    cuisine: prefill ? prefill.cuisine : (condition.cuisine || 'japan'),
+    meals: prefill ? prefill.mealTypes.slice() : [],
+    baseServings: prefill ? prefill.baseServings : 2,
+    spiceLevel: prefill ? prefill.tags.spiceLevel : 'mild',
+    timeLevel: prefill ? prefill.tags.timeLevel : 'standard',
+    excludeTags: prefill ? (prefill.tags.excludeIngredients || []).slice() : []
+  };
+
+  document.getElementById('add-form-title').textContent = prefill ? 'メニューを編集する' : 'メニューを追加する';
+  document.getElementById('add-submit-btn').textContent = prefill ? 'この内容で更新する' : 'この内容で登録する';
+  document.getElementById('add-delete-btn').hidden = !prefill;
+
+  document.getElementById('add-name').value = prefill ? prefill.name : '';
+  document.getElementById('add-cooktime').value = prefill ? prefill.cookTimeMinutes : '';
+  document.getElementById('add-lowcal').checked = prefill ? !!prefill.tags.lowCalorie : false;
+  document.getElementById('add-nutrition-comment').value = prefill ? prefill.nutritionComment : '';
+  ['kcal','protein','fat','carb','salt'].forEach(function(k){
+    document.getElementById('add-' + k).value = prefill ? prefill.nutrition[k] : '';
+  });
+
+  renderAddChipGroup('add-cuisine-chips', CUISINES,
+    function(k){ return addDraft.cuisine === k; },
+    function(k){ addDraft.cuisine = k; });
+  renderAddChipGroup('add-meal-chips', MEALS,
+    function(k){ return addDraft.meals.indexOf(k) !== -1; },
+    function(k){ const i = addDraft.meals.indexOf(k); if(i === -1) addDraft.meals.push(k); else addDraft.meals.splice(i, 1); });
+  renderAddChipGroup('add-baseservings-chips', SERVINGS_OPTIONS,
+    function(k){ return addDraft.baseServings === k; },
+    function(k){ addDraft.baseServings = k; });
+  renderAddChipGroup('add-spice-chips', RECIPE_SPICE_OPTIONS,
+    function(k){ return addDraft.spiceLevel === k; },
+    function(k){ addDraft.spiceLevel = k; });
+  renderAddChipGroup('add-timelevel-chips', RECIPE_TIME_OPTIONS,
+    function(k){ return addDraft.timeLevel === k; },
+    function(k){ addDraft.timeLevel = k; });
+  renderAddChipGroup('add-exclude-chips', EXCLUDABLE_TAGS,
+    function(k){ return addDraft.excludeTags.indexOf(k) !== -1; },
+    function(k){ const i = addDraft.excludeTags.indexOf(k); if(i === -1) addDraft.excludeTags.push(k); else addDraft.excludeTags.splice(i, 1); });
+
+  const typeSel = document.getElementById('add-dish-type');
+  typeSel.innerHTML = DISH_TYPES.map(function(d){ return '<option value="'+d.key+'">'+d.label+'</option>'; }).join('');
+  const colorSel = document.getElementById('add-dish-color');
+  colorSel.innerHTML = DISH_COLOR_PRESETS.map(function(p){ return '<option value="'+p.key+'">'+p.label+'</option>'; }).join('');
+  if(prefill && prefill.finishedIllustration){
+    typeSel.value = prefill.finishedIllustration.type;
+    colorSel.value = matchColorPreset(prefill.finishedIllustration.colors);
+  } else {
+    typeSel.value = 'plate-main';
+    colorSel.value = 'default';
+  }
+  typeSel.onchange = updateDishPreview;
+  colorSel.onchange = updateDishPreview;
+  updateDishPreview();
+
+  document.getElementById('glossary-terms').textContent = Object.keys(GLOSSARY_COMMON).join(' / ');
+
+  ['add-ingredient-rows','add-seasoning-rows','add-tool-rows','add-step-rows'].forEach(function(id){
+    document.getElementById(id).innerHTML = '';
+  });
+  if(prefill){
+    prefill.ingredients.forEach(function(it){ addDynRow('ingredient', it); });
+    (prefill.seasonings || []).forEach(function(it){ addDynRow('seasoning', it); });
+    (prefill.tools || []).forEach(function(t){
+      addDynRow('tool', {name:t, note:(prefill.toolNotes && prefill.toolNotes[t]) || ''});
+    });
+    prefill.steps.forEach(function(s){ addDynRow('step', s); });
+  } else {
+    addDynRow('ingredient'); addDynRow('ingredient');
+    addDynRow('seasoning');
+    addDynRow('tool');
+    addDynRow('step'); addDynRow('step');
+  }
+
+  document.getElementById('add-form-error').hidden = true;
+  window.scrollTo(0, 0);
+}
+
+function collectAddForm(){
+  const name = document.getElementById('add-name').value.trim();
+  if(!name) return {ok:false, error:'料理名を入力してください。'};
+  if(!addDraft.meals.length) return {ok:false, error:'食事区分を1つ以上選んでください。'};
+
+  const readItems = function(selector){
+    const out = [];
+    document.querySelectorAll(selector).forEach(function(row){
+      const nm = row.querySelector('.dr-name').value.trim();
+      if(!nm) return;
+      out.push({
+        name: nm,
+        amount: parseNumOrNull(row.querySelector('.dr-amount').value),
+        unit: row.querySelector('.dr-unit').value.trim() || '適量'
+      });
+    });
+    return out;
+  };
+  const ingredients = readItems('#add-ingredient-rows .dyn-row');
+  if(!ingredients.length) return {ok:false, error:'食材を1つ以上入力してください。'};
+  const seasonings = readItems('#add-seasoning-rows .dyn-row');
+
+  const tools = [];
+  const toolNotes = {};
+  document.querySelectorAll('#add-tool-rows .dyn-row').forEach(function(row){
+    const nm = row.querySelector('.dr-name').value.trim();
+    if(!nm) return;
+    tools.push(nm);
+    const note = row.querySelector('.dr-note').value.trim();
+    if(note) toolNotes[nm] = note;
+  });
+
+  const steps = [];
+  document.querySelectorAll('#add-step-rows .dyn-row-step').forEach(function(row){
+    const tx = row.querySelector('.dr-text').value.trim();
+    if(!tx) return;
+    steps.push({
+      text: tx,
+      timeMinutes: parseNumOr0(row.querySelector('.dr-time').value),
+      tip: row.querySelector('.dr-tip').value.trim(),
+      icon: row.querySelector('.dr-icon').value || 'stir'
+    });
+  });
+  if(!steps.length) return {ok:false, error:'作り方の手順を1つ以上入力してください。'};
+
+  const glossary = [];
+  steps.forEach(function(s){
+    const re = /\{\{(.+?)\}\}/g;
+    let m;
+    while((m = re.exec(s.text))){
+      if(GLOSSARY_COMMON[m[1]] && glossary.indexOf(m[1]) === -1) glossary.push(m[1]);
+    }
+  });
+
+  const dishType = document.getElementById('add-dish-type').value;
+  const presetKey = document.getElementById('add-dish-color').value;
+  const preset = DISH_COLOR_PRESETS.filter(function(p){ return p.key === presetKey; })[0];
+  const colors = (preset && preset.colors) ? preset.colors.slice() : (DISH_DEFAULT_COLORS[dishType] || []).slice();
+
+  const recipe = {
+    id: editingRecipeId || ('user-' + Date.now()),
+    name: name,
+    cuisine: addDraft.cuisine,
+    mealTypes: addDraft.meals.slice(),
+    baseServings: addDraft.baseServings,
+    tags: {
+      spiceLevel: addDraft.spiceLevel,
+      timeLevel: addDraft.timeLevel,
+      excludeIngredients: addDraft.excludeTags.slice(),
+      lowCalorie: document.getElementById('add-lowcal').checked
+    },
+    cookTimeMinutes: parseNumOr0(document.getElementById('add-cooktime').value),
+    nutrition: {
+      kcal: parseNumOr0(document.getElementById('add-kcal').value),
+      protein: parseNumOr0(document.getElementById('add-protein').value),
+      fat: parseNumOr0(document.getElementById('add-fat').value),
+      carb: parseNumOr0(document.getElementById('add-carb').value),
+      salt: parseNumOr0(document.getElementById('add-salt').value)
+    },
+    nutritionComment: document.getElementById('add-nutrition-comment').value.trim() || 'バランスを意識した自作メニューです。',
+    ingredients: ingredients,
+    seasonings: seasonings,
+    tools: tools,
+    toolNotes: toolNotes,
+    glossary: glossary,
+    steps: steps,
+    finishedIllustration: {type: dishType, colors: colors},
+    userAdded: true
+  };
+  return {ok:true, recipe:recipe};
+}
+
+document.getElementById('add-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  const res = collectAddForm();
+  const errEl = document.getElementById('add-form-error');
+  if(!res.ok){
+    errEl.textContent = res.error;
+    errEl.hidden = false;
+    if(errEl.scrollIntoView) errEl.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  errEl.hidden = true;
+  const rec = res.recipe;
+  USER_RECIPES = USER_RECIPES.filter(function(r){ return r.id !== rec.id; });
+  USER_RECIPES.push(rec);
+  saveUserRecipes();
+  syncUserRecipesIntoMain();
+  editingRecipeId = null;
+  openDetail(rec.id, 'screen-all');
+});
+
+function removeUserRecipe(id){
+  if(!id) return;
+  if(!window.confirm('このレシピを削除します。よろしいですか?')) return;
+  USER_RECIPES = USER_RECIPES.filter(function(r){ return r.id !== id; });
+  saveUserRecipes();
+  syncUserRecipesIntoMain();
+  if(appState.checks[id]){ delete appState.checks[id]; saveState(); }
+  editingRecipeId = null;
+  renderAllMenuScreen();
+  showScreen('screen-all');
+}
+function deleteEditingRecipe(){
+  removeUserRecipe(editingRecipeId);
+}
+
+/* =========================================================
    画面切り替え・初期化
    ========================================================= */
 function showScreen(id){
@@ -1254,9 +1794,12 @@ function showScreen(id){
   document.getElementById(id).classList.add('active');
   document.getElementById('home-btn').hidden = (id === 'screen-top');
   document.getElementById('allmenu-btn').hidden = (id === 'screen-all');
+  document.getElementById('add-btn').hidden = (id === 'screen-add');
   window.scrollTo(0,0);
 }
 function init(){
+  USER_RECIPES = loadUserRecipes();
+  syncUserRecipesIntoMain();
   syncFormUI();
   showScreen('screen-top');
 }
