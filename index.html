@@ -68,6 +68,24 @@ details.filter-details .field-group:first-of-type{margin-top:14px;}
   background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 16px; margin-bottom:16px; font-size:0.9rem; color:var(--muted);
 }
 .recipe-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px;}
+.menu-view-toggle{margin-top:12px;}
+.menu-list{display:flex; flex-direction:column; gap:8px;}
+.menu-row{
+  display:flex; align-items:center; gap:12px; width:100%; text-align:left; font:inherit; color:inherit;
+  background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; cursor:pointer;
+  transition:border-color .15s, box-shadow .15s;
+}
+.menu-row:hover{border-color:var(--primary); box-shadow:0 3px 10px rgba(0,0,0,0.06);}
+.menu-row-thumb{
+  flex-shrink:0; width:54px; height:54px; border-radius:8px; overflow:hidden;
+  background:#F3EEE1; display:flex; align-items:center; justify-content:center;
+}
+.menu-row-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+.menu-row-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+.menu-row-name{font-weight:bold; font-size:0.98rem;}
+.menu-row-meta{font-size:0.78rem; color:var(--muted);}
+.menu-row .badge-row{margin:3px 0 0;}
+.menu-row-chevron{flex-shrink:0; color:var(--muted); font-size:1.3rem; line-height:1;}
 .recipe-card{
   background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; cursor:pointer;
   transition:transform .15s, box-shadow .15s; display:flex; flex-direction:column;
@@ -291,6 +309,7 @@ footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padd
     <div class="hero">
       <h2>登録メニュー一覧</h2>
       <p class="lead" id="all-menu-count"></p>
+      <div class="chip-group menu-view-toggle" id="menu-view-chips"></div>
     </div>
     <div id="all-menu-results"></div>
   </section>
@@ -467,6 +486,10 @@ const COMMONS_ENDPOINT = 'https://commons.wikimedia.org/w/api.php';
 const IMAGE_MODES = [
   {key:'illust', label:'イラスト'},
   {key:'photo', label:'写真(ネット検索)'}
+];
+const MENU_VIEWS = [
+  {key:'card', label:'カード'},
+  {key:'list', label:'リスト'}
 ];
 
 // メニュー追加フォーム用の選択肢(レシピ自体のタグは「指定なし」を持たない)
@@ -1426,15 +1449,52 @@ function renderRecipeCard(r, origin){
   return div;
 }
 
+function renderRecipeRow(r, origin){
+  const row = document.createElement('button');
+  row.type = 'button';
+  row.className = 'menu-row';
+  let badges = '';
+  if(isUserAdded(r)) badges += '<span class="badge badge-user">自作</span>';
+  else if(hasBuiltinOverride(r.id)) badges += '<span class="badge badge-user">編集済み</span>';
+  if(r.tags.timeLevel === 'quick') badges += '<span class="badge badge-accent">はじめの一品</span>';
+  if(r.tags.lowCalorie) badges += '<span class="badge">低カロリー</span>';
+  const photo = hasRecipePhoto(r);
+  row.innerHTML =
+    '<span class="menu-row-thumb'+(photo ? ' has-photo' : '')+'">' +
+      (photo
+        ? '<img src="'+esc(r.photo.thumbnail)+'" alt="" loading="lazy" data-fbid="'+esc(r.id)+'" data-fbsize="44" onerror="photoFallback(this)">'
+        : dishSVG(r.finishedIllustration.type, r.finishedIllustration.colors, 44)) +
+    '</span>' +
+    '<span class="menu-row-body">' +
+      '<span class="menu-row-name">'+esc(r.name)+'</span>' +
+      (badges ? '<span class="badge-row">'+badges+'</span>' : '') +
+      '<span class="menu-row-meta">'+r.nutrition.kcal+'kcal・調理目安'+r.cookTimeMinutes+'分・辛さ'+SPICE_LABEL[r.tags.spiceLevel]+'</span>' +
+    '</span>' +
+    '<span class="menu-row-chevron">&#8250;</span>';
+  row.addEventListener('click', function(){ openDetail(r.id, origin); });
+  return row;
+}
+
 /* =========================================================
    登録メニュー一覧画面(国別ブラウズ)
    ========================================================= */
+function getMenuView(){
+  return (appState.menuView === 'list') ? 'list' : 'card';
+}
+function setMenuView(v){
+  appState.menuView = (v === 'list') ? 'list' : 'card';
+  saveState();
+}
 function openAllMenu(){
   renderAllMenuScreen();
   showScreen('screen-all');
 }
 function renderAllMenuScreen(){
   document.getElementById('all-menu-count').textContent = '全'+RECIPES.length+'品を国・料理ジャンル別に掲載しています。';
+  renderAddChipGroup('menu-view-chips', MENU_VIEWS,
+    function(k){ return getMenuView() === k; },
+    function(k){ setMenuView(k); renderAllMenuScreen(); });
+  const view = getMenuView();
   const container = document.getElementById('all-menu-results');
   container.innerHTML = '';
   const addBar = document.createElement('button');
@@ -1452,12 +1512,12 @@ function renderAllMenuScreen(){
     const heading = document.createElement('h3');
     heading.innerHTML = c.label + ' <span class="cuisine-count">('+recipesOfCuisine.length+'品)</span>';
     section.appendChild(heading);
-    const grid = document.createElement('div');
-    grid.className = 'recipe-grid';
+    const wrap = document.createElement('div');
+    wrap.className = (view === 'list') ? 'menu-list' : 'recipe-grid';
     recipesOfCuisine.forEach(function(r){
-      grid.appendChild(renderRecipeCard(r, 'screen-all'));
+      wrap.appendChild(view === 'list' ? renderRecipeRow(r, 'screen-all') : renderRecipeCard(r, 'screen-all'));
     });
-    section.appendChild(grid);
+    section.appendChild(wrap);
     container.appendChild(section);
   });
 }
