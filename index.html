@@ -178,6 +178,21 @@ textarea{width:100%; resize:vertical; line-height:1.6; min-height:60px;}
 }
 .user-recipe-actions button.danger{border-color:var(--danger); color:var(--danger);}
 
+/* --- AIレシピ下書き --- */
+.ai-panel{border:1px solid var(--border); background:var(--surface); border-radius:12px; padding:14px 16px; margin-bottom:20px;}
+.ai-panel > details{margin-bottom:12px;}
+.ai-panel summary{cursor:pointer; font-weight:bold; padding:4px 0; font-size:0.92rem;}
+.ai-panel details .text-input, .ai-panel details .select-input{margin-top:8px;}
+.ai-lead{margin:0 0 10px; font-size:0.86rem; color:var(--muted);}
+.ai-gen-row{display:flex; gap:8px; flex-wrap:wrap;}
+.ai-gen-row .text-input{flex:1 1 180px;}
+.ai-gen-row .btn{flex:0 0 auto; min-height:44px; padding:12px 18px;}
+#ai-key-status{font-size:0.8rem; margin-left:8px;}
+.ai-status{margin:10px 0 0; font-size:0.86rem; padding:8px 10px; border-radius:6px;}
+.ai-status.busy{background:#EEF2F6; color:var(--muted);}
+.ai-status.ok{background:#EAF0EA; color:var(--primary-dark);}
+.ai-status.error{background:#FBEAE8; color:var(--danger);}
+
 footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padding:20px; }
 @media (max-width:600px){
   .recipe-grid{grid-template-columns:1fr 1fr;}
@@ -274,6 +289,22 @@ footer.app-footer{text-align:center; color:var(--muted); font-size:0.78rem; padd
       <p class="lead">あなたのレシピを登録すると、条件検索やメニュー一覧に表示されます。内容はこの端末にのみ保存されます。</p>
     </div>
     <form id="add-form">
+      <div class="ai-panel" id="ai-panel">
+        <p class="ai-lead">料理名を入れるだけで、AIが食材・分量・手順・栄養の下書きを作成します。内容は必ず確認・修正してから登録してください(分量や栄養は目安です)。</p>
+        <details id="ai-key-details">
+          <summary>AIアシスタント設定(APIキー)<span id="ai-key-status"></span></summary>
+          <p class="form-hint">Anthropic (Claude) の APIキーを入力してください。キーはこの端末の localStorage にのみ保存され、送信先は api.anthropic.com だけです。キーの取得は console.anthropic.com から行えます(利用料が発生します)。</p>
+          <input type="password" id="ai-key-input" class="text-input" placeholder="sk-ant-..." autocomplete="off">
+          <label class="field-label" for="ai-model-select" style="margin-top:10px;">使用モデル</label>
+          <select id="ai-model-select" class="select-input"></select>
+          <button type="button" class="mini-btn" id="ai-key-save">キーとモデルを保存</button>
+        </details>
+        <div class="ai-gen-row">
+          <input type="text" id="ai-dish-input" class="text-input" placeholder="作りたい料理名(例: 肉じゃが、麻婆茄子)" maxlength="40">
+          <button type="button" class="btn btn-primary" id="ai-gen-btn">AIで下書きを作成</button>
+        </div>
+        <p class="ai-status" id="ai-gen-status" hidden></p>
+      </div>
       <div class="field-group">
         <label class="field-label" for="add-name">料理名 <span class="req">必須</span></label>
         <input type="text" id="add-name" class="text-input" placeholder="例: 肉じゃが" maxlength="40">
@@ -393,6 +424,17 @@ const TIME_LEVELS = [
   {key:'any', label:'指定なし'}, {key:'quick', label:'時短(〜25分)'}, {key:'standard', label:'標準(26〜40分)'}, {key:'slow', label:'じっくり(40分〜)'}
 ];
 const EXCLUDABLE_TAGS = ['パクチー','魚介','きのこ','乳製品'];
+
+// AIレシピ下書き(Anthropic API を直接呼び出す)
+const ANTHROPIC_ENDPOINT = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_VERSION = '2023-06-01';
+const AI_KEY_STORAGE = 'cookingAppAnthropicKey_v1';
+const AI_MODEL_STORAGE = 'cookingAppAiModel_v1';
+const AI_MODELS = [
+  {id:'claude-opus-5', label:'Claude Opus 5(高品質・高コスト)'},
+  {id:'claude-sonnet-5', label:'Claude Sonnet 5(バランス)'},
+  {id:'claude-haiku-4-5', label:'Claude Haiku 4.5(低コスト・高速)'}
+];
 
 // メニュー追加フォーム用の選択肢(レシピ自体のタグは「指定なし」を持たない)
 const RECIPE_SPICE_OPTIONS = [
@@ -1573,14 +1615,263 @@ function updateDishPreview(){
   document.getElementById('add-dish-preview').innerHTML = dishSVG(type, colors, 150);
 }
 
+/* ---- AIレシピ下書き生成 ---- */
+function loadAiKey(){
+  try{ return localStorage.getItem(AI_KEY_STORAGE) || ''; }catch(e){ return ''; }
+}
+function saveAiKey(v){
+  try{ if(v) localStorage.setItem(AI_KEY_STORAGE, v); else localStorage.removeItem(AI_KEY_STORAGE); }catch(e){}
+}
+function loadAiModel(){
+  let v = '';
+  try{ v = localStorage.getItem(AI_MODEL_STORAGE) || ''; }catch(e){}
+  return AI_MODELS.filter(function(m){ return m.id === v; }).length ? v : AI_MODELS[0].id;
+}
+function saveAiModel(v){
+  try{ localStorage.setItem(AI_MODEL_STORAGE, v); }catch(e){}
+}
+function setAiKeyStatus(){
+  const el = document.getElementById('ai-key-status');
+  const has = !!loadAiKey();
+  el.textContent = has ? '  ✓ 保存済み' : '  未設定';
+  el.style.color = has ? 'var(--accent)' : 'var(--muted)';
+}
+function showAiStatus(msg, kind){
+  const el = document.getElementById('ai-gen-status');
+  el.textContent = msg;
+  el.className = 'ai-status' + (kind ? ' ' + kind : '');
+  el.hidden = false;
+}
+function setupAiPanel(isEdit, freshAdd){
+  const panel = document.getElementById('ai-panel');
+  panel.hidden = isEdit;
+  if(isEdit) return;
+  const keyInput = document.getElementById('ai-key-input');
+  const modelSel = document.getElementById('ai-model-select');
+  modelSel.innerHTML = AI_MODELS.map(function(m){ return '<option value="'+m.id+'">'+m.label+'</option>'; }).join('');
+  modelSel.value = loadAiModel();
+  keyInput.value = loadAiKey();
+  const keyDetails = document.getElementById('ai-key-details');
+  keyDetails.open = !loadAiKey();
+  setAiKeyStatus();
+  document.getElementById('ai-gen-status').hidden = true;
+  if(freshAdd) document.getElementById('ai-dish-input').value = '';
+  document.getElementById('ai-key-save').onclick = function(){
+    const v = keyInput.value.trim();
+    saveAiKey(v);
+    saveAiModel(modelSel.value);
+    setAiKeyStatus();
+    if(v) keyDetails.open = false;
+  };
+  document.getElementById('ai-gen-btn').onclick = onGenerateClick;
+}
+
+async function onGenerateClick(){
+  const dish = document.getElementById('ai-dish-input').value.trim();
+  const btn = document.getElementById('ai-gen-btn');
+  if(!dish){ showAiStatus('作りたい料理名を入力してください。', 'error'); return; }
+  if(!loadAiKey()){
+    showAiStatus('先に「AIアシスタント設定」でAPIキーを保存してください。', 'error');
+    document.getElementById('ai-key-details').open = true;
+    return;
+  }
+  const oldLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '生成中…';
+  showAiStatus('AIがレシピを考えています。10〜40秒ほどかかります…', 'busy');
+  try{
+    const res = await generateRecipeDraft(dish);
+    if(!res.ok){
+      showAiStatus(res.error, 'error');
+    } else {
+      populateFromAiDraft(res.recipe);
+      showAiStatus('AIが下書きを作成しました。内容を確認・修正してから「登録する」を押してください。', 'ok');
+    }
+  }catch(err){
+    showAiStatus('予期しないエラー: ' + (err && err.message ? err.message : String(err)), 'error');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = oldLabel;
+  }
+}
+
+function buildRecipeTool(glossaryKeys){
+  const item = {
+    type:'object',
+    properties:{
+      name:{type:'string'},
+      amount:{type:['number','null'], description:'分量の数値。「少々」「適量」など数値化できない場合は null'},
+      unit:{type:'string', description:'単位(g, ml, 個, 大さじ1, 少々 など)'}
+    },
+    required:['name','unit']
+  };
+  return {
+    name:'register_recipe',
+    description:'料理初心者向けアプリに1件のレシピを登録する。すべて日本語で、家庭で実際に作れる現実的な分量・手順にする。',
+    input_schema:{
+      type:'object',
+      properties:{
+        name:{type:'string', description:'料理名'},
+        cuisine:{type:'string', enum:['japan','china','india','thailand','france','italy']},
+        mealTypes:{type:'array', minItems:1, items:{type:'string', enum:['breakfast','lunch','dinner']}},
+        baseServings:{type:'integer', enum:[1,2,3,4], description:'分量の基準人数'},
+        cookTimeMinutes:{type:'integer', description:'調理時間の目安(分)'},
+        spiceLevel:{type:'string', enum:['mild','medium','hot']},
+        timeLevel:{type:'string', enum:['quick','standard','slow'], description:'quick=25分以内 / standard=26〜40分 / slow=40分超'},
+        lowCalorie:{type:'boolean', description:'カロリー控えめのメニューか'},
+        excludeIngredients:{type:'array', items:{type:'string', enum:EXCLUDABLE_TAGS}, description:'この料理に含まれ、苦手な人が除外検索に使うタグ'},
+        nutrition:{type:'object', description:'1人分あたりの推定値(目安)', properties:{
+          kcal:{type:'number'}, protein:{type:'number'}, fat:{type:'number'}, carb:{type:'number'}, salt:{type:'number'}
+        }, required:['kcal','protein','fat','carb','salt']},
+        nutritionComment:{type:'string', description:'栄養面のひとことコメント'},
+        ingredients:{type:'array', minItems:1, items:item},
+        seasonings:{type:'array', items:item},
+        tools:{type:'array', items:{type:'string'}, description:'必要な調理器具'},
+        toolNotes:{type:'array', description:'家庭にない可能性がある器具の代用メモ', items:{type:'object', properties:{
+          tool:{type:'string'}, note:{type:'string'}
+        }, required:['tool','note']}},
+        steps:{type:'array', minItems:1, items:{type:'object', properties:{
+          text:{type:'string', description:'手順の説明。専門用語は指定の用語のみ {{用語}} の形で囲む'},
+          timeMinutes:{type:'integer', description:'この手順の目安時間(分)'},
+          tip:{type:'string', description:'初心者がつまずきやすい点のコツ。無ければ空文字'},
+          icon:{type:'string', enum:Object.keys(STEP_ICON_LABELS)}
+        }, required:['text','timeMinutes','icon']}},
+        dishType:{type:'string', enum:DISH_TYPES.map(function(d){ return d.key; }), description:'完成イメージのイラスト種別'},
+        colorPreset:{type:'string', enum:['default','warm','green','brown']}
+      },
+      required:['name','cuisine','mealTypes','baseServings','cookTimeMinutes','spiceLevel','timeLevel','lowCalorie','nutrition','nutritionComment','ingredients','seasonings','tools','steps','dishType','colorPreset']
+    }
+  };
+}
+
+async function generateRecipeDraft(dishName){
+  const apiKey = loadAiKey();
+  const model = loadAiModel();
+  const glossaryKeys = Object.keys(GLOSSARY_COMMON);
+  const hints = [];
+  if(addDraft){
+    if(addDraft.cuisine && CUISINE_LABEL[addDraft.cuisine]) hints.push(CUISINE_LABEL[addDraft.cuisine] + '料理');
+    if(addDraft.meals && addDraft.meals.length) hints.push(addDraft.meals.map(mealLabel).join('・'));
+    if(addDraft.baseServings) hints.push(addDraft.baseServings + '人分');
+  }
+  const system =
+    'あなたは料理初心者向けの学習アプリのレシピ作成アシスタントです。' +
+    '指定された料理について、家庭で実際に作れる現実的なレシピを register_recipe ツールで1件だけ返してください。' +
+    '出力はすべて日本語。分量は baseServings 人分に合わせた現実的な数値にし、' +
+    '「少々」「適量」など数値で表せない調味料は amount を null にして unit に「少々」などの語を入れます。' +
+    'steps は初心者が迷わないよう1手順ずつ具体的に書き、各 text 内で次の用語を使うときだけ二重波かっこで囲みます(例: {{中火}}): ' +
+    glossaryKeys.join('、') + '。これ以外の語は囲まないでください。' +
+    'icon は各手順の作業内容に最も近いものを列挙値から選びます。' +
+    'nutrition は1人分あたりの推定値(目安)で構いません。';
+  const userMsg =
+    '「' + dishName + '」のレシピを作ってください。' +
+    (hints.length ? '(想定: ' + hints.join(' / ') + ')' : '') +
+    ' 必ず register_recipe ツールを呼び出して結果を返してください。';
+
+  let resp;
+  try{
+    resp = await fetch(ANTHROPIC_ENDPOINT, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': ANTHROPIC_VERSION,
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: model,
+        max_tokens: 4000,
+        system: system,
+        tools: [buildRecipeTool(glossaryKeys)],
+        tool_choice: {type:'auto'},
+        messages: [{role:'user', content: userMsg}]
+      })
+    });
+  }catch(e){
+    return {ok:false, error:'通信に失敗しました。オフラインでないか確認してください。ファイルを直接開いている場合は、ブラウザの制限により通信できないことがあります(GitHub Pages などのURL経由で開くと動作することがあります)。'};
+  }
+  if(!resp.ok){
+    let detail = '';
+    try{ const j = await resp.json(); detail = (j && j.error && j.error.message) ? j.error.message : ''; }catch(e){}
+    if(resp.status === 401) return {ok:false, error:'APIキーが正しくないようです(401)。設定を確認してください。'};
+    if(resp.status === 429) return {ok:false, error:'リクエストが集中しています(429)。少し待って再度お試しください。'};
+    return {ok:false, error:'APIエラー(' + resp.status + ')' + (detail ? ': ' + detail : '')};
+  }
+  let data;
+  try{ data = await resp.json(); }catch(e){ return {ok:false, error:'応答の解析に失敗しました。'}; }
+  const block = (data.content || []).filter(function(b){ return b.type === 'tool_use' && b.name === 'register_recipe'; })[0];
+  if(!block || !block.input) return {ok:false, error:'AIがレシピ形式で回答しませんでした。料理名を変えて再度お試しください。'};
+  return {ok:true, recipe: block.input};
+}
+
+function normalizeAiItems(arr){
+  return (arr || []).filter(function(x){ return x && x.name; }).map(function(x){
+    return {
+      name: String(x.name),
+      amount: (typeof x.amount === 'number' && !isNaN(x.amount)) ? x.amount : null,
+      unit: (x.unit != null && String(x.unit).trim()) ? String(x.unit).trim() : '適量'
+    };
+  });
+}
+function populateFromAiDraft(ai){
+  const toolNotes = {};
+  (ai.toolNotes || []).forEach(function(tn){ if(tn && tn.tool) toolNotes[String(tn.tool)] = tn.note ? String(tn.note) : ''; });
+  const preset = DISH_COLOR_PRESETS.filter(function(p){ return p.key === ai.colorPreset; })[0];
+  const dishType = DISH_DEFAULT_COLORS[ai.dishType] ? ai.dishType : 'plate-main';
+  const colors = (preset && preset.colors) ? preset.colors.slice() : DISH_DEFAULT_COLORS[dishType].slice();
+  const cuisine = CUISINE_LABEL[ai.cuisine] ? ai.cuisine : 'japan';
+  const meals = (ai.mealTypes || []).filter(function(m){ return ['breakfast','lunch','dinner'].indexOf(m) !== -1; });
+  const spice = ['mild','medium','hot'].indexOf(ai.spiceLevel) !== -1 ? ai.spiceLevel : 'mild';
+  const timeLv = ['quick','standard','slow'].indexOf(ai.timeLevel) !== -1 ? ai.timeLevel : 'standard';
+  const prefill = {
+    id: null,
+    name: ai.name ? String(ai.name) : '',
+    cuisine: cuisine,
+    mealTypes: meals.length ? meals : ['dinner'],
+    baseServings: [1,2,3,4].indexOf(ai.baseServings) !== -1 ? ai.baseServings : 2,
+    cookTimeMinutes: parseNumOr0(ai.cookTimeMinutes),
+    tags:{
+      spiceLevel: spice,
+      timeLevel: timeLv,
+      excludeIngredients: (ai.excludeIngredients || []).filter(function(t){ return EXCLUDABLE_TAGS.indexOf(t) !== -1; }),
+      lowCalorie: !!ai.lowCalorie
+    },
+    nutrition:{
+      kcal: parseNumOr0(ai.nutrition && ai.nutrition.kcal),
+      protein: parseNumOr0(ai.nutrition && ai.nutrition.protein),
+      fat: parseNumOr0(ai.nutrition && ai.nutrition.fat),
+      carb: parseNumOr0(ai.nutrition && ai.nutrition.carb),
+      salt: parseNumOr0(ai.nutrition && ai.nutrition.salt)
+    },
+    nutritionComment: ai.nutritionComment ? String(ai.nutritionComment) : '',
+    ingredients: normalizeAiItems(ai.ingredients),
+    seasonings: normalizeAiItems(ai.seasonings),
+    tools: (ai.tools || []).filter(Boolean).map(String),
+    toolNotes: toolNotes,
+    steps: (ai.steps || []).filter(function(s){ return s && s.text; }).map(function(s){
+      return {
+        text: String(s.text),
+        timeMinutes: parseNumOr0(s.timeMinutes),
+        tip: s.tip ? String(s.tip) : '',
+        icon: STEP_ICON_LABELS[s.icon] ? s.icon : 'stir'
+      };
+    }),
+    finishedIllustration:{ type: dishType, colors: colors }
+  };
+  if(!prefill.ingredients.length) prefill.ingredients = [{name:'', amount:null, unit:''}];
+  if(!prefill.steps.length) prefill.steps = [{text:'', timeMinutes:0, tip:'', icon:'stir'}];
+  renderAddForm(prefill, false);
+}
+
 function openAddForm(id){
   const prefill = id ? RECIPES.filter(function(x){ return x.id === id; })[0] : null;
-  renderAddForm(prefill || null);
+  renderAddForm(prefill || null, !!prefill);
   showScreen('screen-add');
 }
 
-function renderAddForm(prefill){
-  editingRecipeId = prefill ? prefill.id : null;
+function renderAddForm(prefill, isEdit){
+  isEdit = !!isEdit;
+  editingRecipeId = isEdit ? prefill.id : null;
   addDraft = {
     cuisine: prefill ? prefill.cuisine : (condition.cuisine || 'japan'),
     meals: prefill ? prefill.mealTypes.slice() : [],
@@ -1590,9 +1881,10 @@ function renderAddForm(prefill){
     excludeTags: prefill ? (prefill.tags.excludeIngredients || []).slice() : []
   };
 
-  document.getElementById('add-form-title').textContent = prefill ? 'メニューを編集する' : 'メニューを追加する';
-  document.getElementById('add-submit-btn').textContent = prefill ? 'この内容で更新する' : 'この内容で登録する';
-  document.getElementById('add-delete-btn').hidden = !prefill;
+  document.getElementById('add-form-title').textContent = isEdit ? 'メニューを編集する' : 'メニューを追加する';
+  document.getElementById('add-submit-btn').textContent = isEdit ? 'この内容で更新する' : 'この内容で登録する';
+  document.getElementById('add-delete-btn').hidden = !isEdit;
+  setupAiPanel(isEdit, !prefill);
 
   document.getElementById('add-name').value = prefill ? prefill.name : '';
   document.getElementById('add-cooktime').value = prefill ? prefill.cookTimeMinutes : '';
